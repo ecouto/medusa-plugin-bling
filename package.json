@@ -1,0 +1,53 @@
+{
+  "name": "medusa-plugin-bling",
+  "version": "1.0.0",
+  "description": "Medusa plugin for Bling ERP integration - Brazilian e-commerce solution",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "medusa",
+    "medusajs",
+    "plugin",
+    "bling",
+    "erp",
+    "brazil",
+    "e-commerce",
+    "integration"
+  ],
+  "author": "Casa Moratti <contato@casamoratti.com>",
+  "license": "MIT",
+  "peerDependencies": {
+    "@medusajs/medusa": "^2.0.0",
+    "@medusajs/types": "^2.0.0",
+    "@medusajs/utils": "^2.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "crypto": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "jest": "^29.0.0",
+    "@types/jest": "^29.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "package.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/medusa-plugin-bling.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/medusa-plugin-bling/issues"
+  },
+  "homepage": "https://github.com/your-username/medusa-plugin-bling#readme"
+}
