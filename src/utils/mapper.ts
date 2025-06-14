@@ -182,7 +182,7 @@ class BlingMapper {
       15: "canceled" // Cancelado pelo cliente
     }
 
-    return statusMap[blingStatus] || "pending"
+    return blingStatus !== undefined ? statusMap[blingStatus] || "pending" : "pending"
   }
 
   static formatCurrency(value: number): string {

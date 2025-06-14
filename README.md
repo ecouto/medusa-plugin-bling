@@ -23,9 +23,38 @@ yarn add medusa-plugin-bling
 
 ## ⚙️ Configuração
 
-### 1. Variáveis de Ambiente
+### 1. Criar Aplicação no Bling
 
-Adicione as seguintes variáveis ao seu arquivo `.env`:
+1. **Acesse:** https://developer.bling.com.br
+2. **Crie uma aplicação** com os seguintes escopos:
+   - ✅ Produtos (Leitura/Escrita)
+   - ✅ Pedidos de Venda (Leitura/Escrita)
+   - ✅ Estoques (Leitura/Escrita)
+   - ✅ Contatos (Leitura/Escrita)
+   - ✅ Logística (Leitura/Escrita)
+3. **Configure URL de redirecionamento:** `http://localhost:9000/bling/callback`
+4. **Anote** `CLIENT_ID` e `CLIENT_SECRET`
+
+### 2. Obter Tokens de Acesso
+
+1. **Abra o link de autorização** (substitua YOUR_CLIENT_ID):
+```
+https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=YOUR_CLIENT_ID&state=medusa
+```
+
+2. **Autorize a aplicação** e copie o `code` da URL de retorno
+
+3. **Troque o código por tokens** usando cURL:
+```bash
+curl -X POST https://www.bling.com.br/Api/v3/oauth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "Authorization: Basic $(echo -n 'CLIENT_ID:CLIENT_SECRET' | base64)" \
+  -d "grant_type=authorization_code&code=SEU_CODIGO"
+```
+
+### 3. Variáveis de Ambiente
+
+Adicione ao seu arquivo `.env`:
 
 ```bash
 # Bling API Credentials
@@ -33,85 +62,52 @@ BLING_CLIENT_ID=seu_client_id
 BLING_CLIENT_SECRET=seu_client_secret
 BLING_ACCESS_TOKEN=seu_access_token
 BLING_REFRESH_TOKEN=seu_refresh_token
-BLING_WEBHOOK_SECRET=seu_webhook_secret
-BLING_ENVIRONMENT=sandbox # ou production
+BLING_ENVIRONMENT=production
 ```
 
-### 2. Configuração do Plugin
+### 4. Configuração do Plugin
 
 No seu `medusa-config.ts`:
 
 ```typescript
-const plugins = [
-  // ... outros plugins
-  {
-    resolve: "medusa-plugin-bling",
-    options: {
-      client_id: process.env.BLING_CLIENT_ID,
-      client_secret: process.env.BLING_CLIENT_SECRET,
-      access_token: process.env.BLING_ACCESS_TOKEN,
-      refresh_token: process.env.BLING_REFRESH_TOKEN,
-      environment: process.env.BLING_ENVIRONMENT || "sandbox",
-      webhook_secret: process.env.BLING_WEBHOOK_SECRET,
-      
-      // Configurações opcionais
-      auto_sync_orders: true,        // Sincronizar pedidos automaticamente
-      auto_sync_inventory: true,     // Sincronizar estoque automaticamente
-      auto_generate_labels: false    // Gerar etiquetas automaticamente
+// Medusa v2 Configuration
+module.exports = defineConfig({
+  // ... outras configurações
+  modules: [
+    {
+      resolve: "medusa-plugin-bling",
+      options: {
+        client_id: process.env.BLING_CLIENT_ID,
+        client_secret: process.env.BLING_CLIENT_SECRET,
+        access_token: process.env.BLING_ACCESS_TOKEN,
+        refresh_token: process.env.BLING_REFRESH_TOKEN,
+        environment: process.env.BLING_ENVIRONMENT || "production"
+      }
     }
-  }
-]
+  ]
+})
 ```
 
 ## 🔧 Como Usar
 
-### Sincronização Automática
-
-O plugin funciona automaticamente após a configuração:
-
-1. **Pedidos**: Quando um pedido é criado no Medusa, ele é automaticamente enviado para o Bling
-2. **Estoque**: Mudanças no estoque são sincronizadas entre os sistemas
-3. **Status**: Updates de status do Bling são refletidos no Medusa via webhooks
-
-### Uso Manual dos Workflows
-
-```typescript
-// Sincronizar pedido específico
-await syncOrderToBlingWorkflow.run({
-  input: { order_id: "order_123" }
-})
-
-// Importar produto do Bling
-await syncProductFromBlingWorkflow.run({
-  input: { bling_product_id: 12345 }
-})
-
-// Gerar etiqueta de envio
-await generateShippingLabelWorkflow.run({
-  input: { 
-    order_id: "order_123",
-    transporter_id: 1 // opcional
-  }
-})
-
-// Sincronizar estoque
-await syncInventoryWorkflow.run({
-  input: {
-    product_variant_id: "variant_123",
-    quantity: 100,
-    direction: "medusa-to-bling"
-  }
-})
-```
-
 ### Usando o BlingService
 
-```typescript
-// Injeção de dependência
-const blingService = container.resolve("blingService")
+O plugin fornece um serviço completo para integração com a API do Bling:
 
-// Autenticar
-await blingService.authenticate()
+```typescript
+import { BlingService } from "medusa-plugin-bling"
+
+// Instanciar o serviço
+const blingService = new BlingService({
+  client_id: process.env.BLING_CLIENT_ID,
+  client_secret: process.env.BLING_CLIENT_SECRET,
+  access_token: process.env.BLING_ACCESS_TOKEN,
+  refresh_token: process.env.BLING_REFRESH_TOKEN,
+  environment: "production"
+})
+
+// Listar produtos
+const products = await blingService.listProducts({ limite: 10 })
 
 // Criar produto
 const product = await blingService.createProduct({
@@ -134,35 +130,30 @@ const order = await blingService.createOrder({
   }]
 })
 
-// Gerar etiqueta
+// Gerar etiqueta de envio
 const label = await blingService.generateShippingLabel(orderId)
+
+// Atualizar estoque
+await blingService.updateInventory(productId, 50, "entrada")
 ```
 
-## 🔗 Webhooks
+## 🚀 Versão Atual
 
-Configure os webhooks no painel do Bling apontando para:
+Esta é a **versão 1.0** do plugin, que inclui:
+- ✅ **BlingService** - Classe principal para comunicação com API
+- ✅ **Autenticação OAuth 2.0** - Com refresh automático de tokens  
+- ✅ **Operações CRUD** - Produtos, pedidos, estoque
+- ✅ **Geração de etiquetas** - Shipping labels via Bling
+- ✅ **Tipos TypeScript** - Tipagem completa da API
+- ✅ **Mapeadores de dados** - Conversão entre formatos Medusa/Bling
 
-```
-https://sua-loja.com/webhooks/bling
-```
+## 🔮 Próximas Versões
 
-### Eventos Suportados
-
-- **produto.created** - Produto criado no Bling
-- **produto.updated** - Produto atualizado no Bling
-- **produto.deleted** - Produto deletado no Bling
-- **pedido.updated** - Status do pedido atualizado
-- **estoque.updated** - Estoque atualizado no Bling
-
-## 📋 Jobs Automáticos
-
-### Sincronização Diária de Estoque
-- **Horário**: 02:00 todos os dias
-- **Função**: Sincroniza estoque do Bling para Medusa
-
-### Sincronização de Status de Pedidos
-- **Horário**: A cada 30 minutos
-- **Função**: Atualiza status dos pedidos baseado no Bling
+Funcionalidades planejadas:
+- 🔄 **Workflows automáticos** - Sincronização automática de pedidos
+- 📡 **Webhooks** - Eventos em tempo real do Bling
+- ⏰ **Jobs periódicos** - Sincronização de estoque automática
+- 🔗 **Subscribers** - Integração com eventos do Medusa
 
 ## 🗃️ Estrutura de Dados
 

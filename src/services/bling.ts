@@ -1,4 +1,3 @@
-import { MedusaService } from "@medusajs/utils"
 import axios, { AxiosInstance } from "axios"
 import { 
   BlingPluginOptions, 
@@ -9,13 +8,12 @@ import {
   BlingApiError 
 } from "../types"
 
-class BlingService extends MedusaService {
+class BlingService {
   private client: AxiosInstance
   private options: BlingPluginOptions
   private accessToken: string | null = null
 
-  constructor(container: any, options: BlingPluginOptions) {
-    super(container)
+  constructor(options: BlingPluginOptions) {
     this.options = options
     this.accessToken = options.access_token || null
 
@@ -61,37 +59,50 @@ class BlingService extends MedusaService {
   }
 
   async authenticate(): Promise<BlingAuthResponse> {
-    try {
-      const response = await axios.post("https://www.bling.com.br/Api/v3/oauth/token", {
-        grant_type: "client_credentials",
-        client_id: this.options.client_id,
-        client_secret: this.options.client_secret
-      })
-
-      const authData: BlingAuthResponse = response.data
-      this.accessToken = authData.access_token
-      
-      return authData
-    } catch (error) {
-      throw new Error(`Bling authentication failed: ${error.response?.data?.error || error.message}`)
+    // If we already have an access token, use it
+    if (this.accessToken) {
+      return {
+        access_token: this.accessToken,
+        refresh_token: this.options.refresh_token || '',
+        expires_in: 21600,
+        token_type: 'Bearer'
+      }
     }
+
+    // If we have a stored access token in options, use it
+    if (this.options.access_token) {
+      this.accessToken = this.options.access_token
+      return {
+        access_token: this.accessToken,
+        refresh_token: this.options.refresh_token || '',
+        expires_in: 21600,
+        token_type: 'Bearer'
+      }
+    }
+
+    throw new Error(`Bling authentication failed: No access token available. Please configure BLING_ACCESS_TOKEN in your environment or use the authorization flow.`)
   }
 
   async refreshAccessToken(): Promise<BlingAuthResponse> {
     try {
-      const response = await axios.post("https://www.bling.com.br/Api/v3/oauth/token", {
-        grant_type: "refresh_token",
-        refresh_token: this.options.refresh_token,
-        client_id: this.options.client_id,
-        client_secret: this.options.client_secret
-      })
+      const credentials = Buffer.from(`${this.options.client_id}:${this.options.client_secret}`).toString('base64')
+      
+      const response = await axios.post("https://www.bling.com.br/Api/v3/oauth/token", 
+        `grant_type=refresh_token&refresh_token=${this.options.refresh_token}`,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': `Basic ${credentials}`
+          }
+        }
+      )
 
       const authData: BlingAuthResponse = response.data
       this.accessToken = authData.access_token
       
       return authData
-    } catch (error) {
-      throw new Error(`Bling token refresh failed: ${error.response?.data?.error || error.message}`)
+    } catch (error: any) {
+      throw new Error(`Bling token refresh failed: ${error?.response?.data?.error || error?.message || 'Unknown error'}`)
     }
   }
 
@@ -202,14 +213,14 @@ class BlingService extends MedusaService {
   }
 
   private handleApiError(error: any, operation: string): never {
-    const errorMessage = error.response?.data?.error?.message || error.message
-    const errorType = error.response?.data?.error?.type || "unknown"
+    const errorMessage = error?.response?.data?.error?.message || error?.message || 'Unknown error'
+    const errorType = error?.response?.data?.error?.type || "unknown"
     
     console.error(`Bling API Error during ${operation}:`, {
       type: errorType,
       message: errorMessage,
-      status: error.response?.status,
-      data: error.response?.data
+      status: error?.response?.status,
+      data: error?.response?.data
     })
 
     throw new Error(`Failed to ${operation}: ${errorMessage}`)
