@@ -13,3 +13,6 @@ yarn-error.log*
 .vscode/
 .idea/
 *.tsbuildinfo
+
+# Claude documentation (keep private for public repo)
+CLAUDE.md
