@@ -1,7 +1,10 @@
+import { defineModule } from "@medusajs/framework/utils"
+import BlingService from "./services/bling"
+
 export * from "./services"
 export * from "./types"
 export * from "./utils"
 
-export default {
-  service: require("./services/bling").default
-}
+export default defineModule("blingService", {
+  service: BlingService
+})

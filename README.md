@@ -71,11 +71,14 @@ No seu `medusa-config.ts`:
 
 ```typescript
 // Medusa v2 Configuration
+import { defineConfig } from '@medusajs/framework/utils'
+
 module.exports = defineConfig({
   // ... outras configurações
   modules: [
     {
       resolve: "medusa-plugin-bling",
+      key: "blingService", // ← OBRIGATÓRIO!
       options: {
         client_id: process.env.BLING_CLIENT_ID,
         client_secret: process.env.BLING_CLIENT_SECRET,
@@ -87,6 +90,8 @@ module.exports = defineConfig({
   ]
 })
 ```
+
+**⚠️ IMPORTANTE:** O parâmetro `key: "blingService"` é obrigatório no Medusa v2 para plugins customizados!
 
 ## 🔧 Como Usar
 

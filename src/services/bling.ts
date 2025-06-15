@@ -9,6 +9,7 @@ import {
 } from "../types"
 
 class BlingService {
+  static identifier = "blingService"
   private client: AxiosInstance
   private options: BlingPluginOptions
   private accessToken: string | null = null
