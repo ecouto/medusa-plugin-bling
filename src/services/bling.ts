@@ -32,6 +32,30 @@ class BlingService {
     })
 
     this.setupInterceptors()
+    
+    // Tentar renovar token se parece estar expirado
+    this.initializeAuth()
+  }
+
+  private async initializeAuth(): Promise<void> {
+    try {
+      // Se temos refresh token mas token atual pode estar expirado, tentar renovar silenciosamente
+      if (this.options.refresh_token && this.options.client_id && this.options.client_secret) {
+        // Fazer refresh em background, não bloquear inicialização
+        setTimeout(async () => {
+          try {
+            console.log("Bling: Verificando validade do token...")
+            await this.refreshAccessToken()
+            console.log("Bling: Token atualizado com sucesso!")
+          } catch (error: any) {
+            console.warn(`Bling: Token pode estar expirado, mas plugin continua funcionando: ${error.message}`)
+          }
+        }, 1000) // Aguardar 1s após inicialização
+      }
+    } catch (error) {
+      // Ignorar erros de inicialização para não bloquear o Medusa
+      console.warn("Bling: Inicialização com warnings, mas plugin disponível")
+    }
   }
 
   private setupInterceptors() {
