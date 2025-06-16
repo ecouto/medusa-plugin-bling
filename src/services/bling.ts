@@ -14,11 +14,12 @@ class BlingService {
   private options: BlingPluginOptions
   private accessToken: string | null = null
 
-  constructor(options: BlingPluginOptions) {
-    this.options = options
-    this.accessToken = options.access_token || null
+  constructor(container: any, options: BlingPluginOptions) {
+    // Medusa v2 passa container como primeiro parâmetro
+    this.options = options || {}
+    this.accessToken = this.options.access_token || null
 
-    const baseURL = options.environment === "production" 
+    const baseURL = this.options.environment === "production" 
       ? "https://www.bling.com.br/Api/v3"
       : "https://sandbox.bling.com.br/Api/v3"
 
