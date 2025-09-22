@@ -1,13 +1,33 @@
 export interface BlingPluginOptions {
-  client_id: string
-  client_secret: string
+  client_id?: string
+  client_secret?: string
   access_token?: string
   refresh_token?: string
-  environment?: "sandbox" | "production"
+  environment?: "production" | "sandbox"
   webhook_secret?: string
-  auto_sync_orders?: boolean
-  auto_sync_inventory?: boolean
-  auto_generate_labels?: boolean
+
+  // Sync configuration toggles
+  sync_config?: {
+    products?: {
+      enabled?: boolean
+      import_images?: boolean
+      import_descriptions?: boolean
+      import_prices?: boolean
+      import_categories?: boolean
+      auto_sync?: boolean
+    }
+    orders?: {
+      enabled?: boolean
+      auto_send_to_bling?: boolean
+      generate_nfe?: boolean
+      update_status?: boolean
+    }
+    inventory?: {
+      enabled?: boolean
+      bidirectional_sync?: boolean
+      auto_sync_interval?: number // minutes
+    }
+  }
 }
 
 export interface BlingAuthResponse {

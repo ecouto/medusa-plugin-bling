@@ -1,12 +1,12 @@
 import axios, { AxiosInstance } from "axios"
-import { 
-  BlingPluginOptions, 
-  BlingAuthResponse, 
-  BlingProduct, 
-  BlingOrder, 
+import {
+  BlingPluginOptions,
+  BlingAuthResponse,
+  BlingProduct,
+  BlingOrder,
   BlingApiResponse,
-  BlingApiError 
-} from "../types"
+  BlingApiError
+} from "./types"
 
 interface SavedBlingToken {
   access_token: string

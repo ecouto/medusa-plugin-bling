@@ -1,17 +1,18 @@
-# Medusa Plugin Bling
+# Medusa Plugin Bling v2.0
 
-Plugin oficial para integração entre **Medusa v2** e **Bling ERP** - Solução completa para e-commerce brasileiro.
+Plugin oficial para integração entre **Medusa v2+** e **Bling ERP** - Solução completa para e-commerce brasileiro com interface admin e configurações granulares.
 
-## 🚀 Recursos
+## 🚀 Recursos v2.0
 
-- ✅ **Sincronização automática de pedidos** - Pedidos do Medusa são enviados automaticamente para o Bling
-- ✅ **Geração de etiquetas de envio** - Crie etiquetas diretamente pelo Bling
-- ✅ **Sincronização de produtos** - Importe produtos do Bling para Medusa
-- ✅ **Controle de estoque** - Sincronização bidirecional de inventário
-- ✅ **Webhooks** - Atualizações em tempo real via webhooks do Bling
-- ✅ **Jobs automáticos** - Sincronização periódica de dados
-- ✅ **Suporte multi-canal** - Integre Mercado Livre, Shopee e loja própria
-- ✅ **OAuth 2.0** - Autenticação segura com refresh token automático
+- ✅ **Interface Admin Completa** - Configure tudo pelo painel administrativo
+- ✅ **Configurações Granulares** - Controle total sobre o que sincronizar
+- ✅ **OAuth 2.0 Automático** - Autenticação segura via interface
+- ✅ **Sincronização Automática** - Pedidos, produtos e estoque
+- ✅ **Webhooks em Tempo Real** - Atualizações instantâneas
+- ✅ **Workflows Avançados** - Processamento assíncrono
+- ✅ **Jobs Agendados** - Sincronização periódica automática
+- ✅ **Toggles de Controle** - Ative/desative recursos específicos
+- ✅ **Logs Detalhados** - Monitoramento completo das operações
 
 ## 📦 Instalação
 
@@ -23,7 +24,27 @@ yarn add medusa-plugin-bling
 
 ## ⚙️ Configuração
 
-### 1. Criar Aplicação no Bling
+### 1. Adicionar ao Medusa
+
+No seu `medusa-config.js`:
+
+```javascript
+import { defineConfig } from '@medusajs/framework/utils'
+
+export default defineConfig({
+  plugins: [
+    {
+      resolve: "medusa-plugin-bling",
+      options: {
+        enableUI: true, // Habilita interface admin
+        // Todas as outras configurações são feitas via interface
+      }
+    }
+  ]
+})
+```
+
+### 2. Criar Aplicação no Bling
 
 1. **Acesse:** https://developer.bling.com.br
 2. **Crie uma aplicação** com os seguintes escopos:
@@ -32,139 +53,89 @@ yarn add medusa-plugin-bling
    - ✅ Estoques (Leitura/Escrita)
    - ✅ Contatos (Leitura/Escrita)
    - ✅ Logística (Leitura/Escrita)
-3. **Configure URL de redirecionamento:** `http://localhost:9000/bling/callback`
-4. **Anote** `CLIENT_ID` e `CLIENT_SECRET`
+3. **Configure URL de redirecionamento:**
+   ```
+   https://seu-dominio.com/admin/bling/oauth/callback
+   ```
 
-### 2. Obter Tokens de Acesso
+### 3. Configurar via Interface Admin
 
-1. **Abra o link de autorização** (substitua YOUR_CLIENT_ID):
-```
-https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=YOUR_CLIENT_ID&state=medusa
-```
+1. **Acesse o Admin:** `https://seu-dominio.com/app`
+2. **Navegue para:** Configurações → Bling
+3. **Configure:**
+   - Client ID e Client Secret
+   - Ambiente (Produção/Sandbox)
+   - Clique em "Autorizar OAuth"
+   - Configure as sincronizações desejadas
 
-2. **Autorize a aplicação** e copie o `code` da URL de retorno
+## 🎛️ Configurações Disponíveis
 
-3. **Troque o código por tokens** usando cURL:
-```bash
-curl -X POST https://www.bling.com.br/Api/v3/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -H "Authorization: Basic $(echo -n 'CLIENT_ID:CLIENT_SECRET' | base64)" \
-  -d "grant_type=authorization_code&code=SEU_CODIGO"
-```
+### Sincronização de Produtos
+- ✅ **Habilitar sincronização** - Liga/desliga a sincronização
+- ✅ **Importar imagens** - Controla se traz imagens do Bling
+- ✅ **Importar descrições** - Controla descrições
+- ✅ **Importar preços** - Controla preços
+- ✅ **Importar categorias** - Controla categorias
+- ✅ **Sincronização automática** - Sync contínua
 
-### 3. Variáveis de Ambiente
+### Sincronização de Pedidos
+- ✅ **Habilitar sincronização** - Liga/desliga envio de pedidos
+- ✅ **Envio automático** - Envia pedidos automaticamente
+- ✅ **Gerar NFe** - Geração automática de NFe
+- ✅ **Atualizar status** - Sincroniza status dos pedidos
 
-Adicione ao seu arquivo `.env`:
+### Sincronização de Estoque
+- ✅ **Habilitar sincronização** - Liga/desliga sync de estoque
+- ✅ **Bidirecional** - Sync nos dois sentidos
+- ✅ **Intervalo** - Frequência da sincronização (minutos)
 
-```bash
-# Bling API Credentials
-BLING_CLIENT_ID=seu_client_id
-BLING_CLIENT_SECRET=seu_client_secret
-BLING_ACCESS_TOKEN=seu_access_token
-BLING_REFRESH_TOKEN=seu_refresh_token
-BLING_ENVIRONMENT=production
-```
+## 🔧 Fluxo de Uso
 
-### 4. Configuração do Plugin
-
-No seu `medusa-config.ts`:
-
-```typescript
-// Medusa v2 Configuration
-import { defineConfig } from '@medusajs/framework/utils'
-
-module.exports = defineConfig({
-  // ... outras configurações
-  modules: [
-    {
-      resolve: "medusa-plugin-bling",
-      key: "blingService", // ← OBRIGATÓRIO!
-      options: {
-        client_id: process.env.BLING_CLIENT_ID,
-        client_secret: process.env.BLING_CLIENT_SECRET,
-        access_token: process.env.BLING_ACCESS_TOKEN,
-        refresh_token: process.env.BLING_REFRESH_TOKEN,
-        environment: process.env.BLING_ENVIRONMENT || "production"
-      }
-    }
-  ]
-})
+### 1. Configuração Inicial
+```javascript
+// Nenhuma configuração manual necessária
+// Tudo é feito via interface admin
 ```
 
-**⚠️ IMPORTANTE:** O parâmetro `key: "blingService"` é obrigatório no Medusa v2 para plugins customizados!
+### 2. Primeira Sincronização
+1. Configure credenciais no admin
+2. Autorize OAuth
+3. Configure toggles de sincronização
+4. Clique em "Sincronizar Produtos Agora"
 
-## 🔧 Como Usar
+### 3. Operação Automática
+- Pedidos são enviados automaticamente ao Bling
+- Estoque é sincronizado periodicamente
+- Webhooks atualizam dados em tempo real
+- Logs mostram todas as operações
 
-### Usando o BlingService
+## 🔄 Fluxos Automatizados
 
-O plugin fornece um serviço completo para integração com a API do Bling:
+### Quando um Pedido é Feito
+1. Pedido é capturado pelo subscriber
+2. Workflow mapeia dados Medusa → Bling
+3. Pedido é enviado ao Bling
+4. NFe é gerada (se habilitada)
+5. Metadata é atualizada no Medusa
 
-```typescript
-import { BlingService } from "medusa-plugin-bling"
+### Sincronização de Estoque
+1. Job roda a cada intervalo configurado
+2. Busca produtos vinculados ao Bling
+3. Compara quantidades
+4. Atualiza divergências
+5. Registra logs das operações
 
-// Instanciar o serviço
-const blingService = new BlingService({
-  client_id: process.env.BLING_CLIENT_ID,
-  client_secret: process.env.BLING_CLIENT_SECRET,
-  access_token: process.env.BLING_ACCESS_TOKEN,
-  refresh_token: process.env.BLING_REFRESH_TOKEN,
-  environment: "production"
-})
-
-// Listar produtos
-const products = await blingService.listProducts({ limite: 10 })
-
-// Criar produto
-const product = await blingService.createProduct({
-  descricao: "Produto Teste",
-  preco: 99.90,
-  situacao: "A"
-})
-
-// Criar pedido
-const order = await blingService.createOrder({
-  data: "2024-01-15",
-  contato: {
-    nome: "Cliente Teste",
-    email: "cliente@teste.com"
-  },
-  itens: [{
-    descricao: "Produto",
-    quantidade: 1,
-    valor: 99.90
-  }]
-})
-
-// Gerar etiqueta de envio
-const label = await blingService.generateShippingLabel(orderId)
-
-// Atualizar estoque
-await blingService.updateInventory(productId, 50, "entrada")
-```
-
-## 🚀 Versão Atual
-
-Esta é a **versão 1.0** do plugin, que inclui:
-- ✅ **BlingService** - Classe principal para comunicação com API
-- ✅ **Autenticação OAuth 2.0** - Com refresh automático de tokens  
-- ✅ **Operações CRUD** - Produtos, pedidos, estoque
-- ✅ **Geração de etiquetas** - Shipping labels via Bling
-- ✅ **Tipos TypeScript** - Tipagem completa da API
-- ✅ **Mapeadores de dados** - Conversão entre formatos Medusa/Bling
-
-## 🔮 Próximas Versões
-
-Funcionalidades planejadas:
-- 🔄 **Workflows automáticos** - Sincronização automática de pedidos
-- 📡 **Webhooks** - Eventos em tempo real do Bling
-- ⏰ **Jobs periódicos** - Sincronização de estoque automática
-- 🔗 **Subscribers** - Integração com eventos do Medusa
+### Webhooks do Bling
+1. Bling envia webhook para `/bling/webhooks`
+2. Payload é validado
+3. Evento é processado conforme tipo
+4. Dados são atualizados no Medusa
 
 ## 🗃️ Estrutura de Dados
 
-### Metadata dos Produtos
-
+### Produtos Sincronizados
 ```typescript
+// Metadata no produto Medusa
 {
   bling_id: "12345",
   bling_codigo: "PROD001",
@@ -172,77 +143,102 @@ Funcionalidades planejadas:
 }
 ```
 
-### Metadata dos Pedidos
-
+### Pedidos Sincronizados
 ```typescript
+// Metadata no pedido Medusa
 {
   bling_id: "67890",
   bling_numero: "1001",
-  bling_status: 3,
   bling_synced_at: "2024-01-15T10:00:00.000Z",
-  bling_shipping_label_url: "https://...",
-  bling_tracking_code: "BR123456789"
+  bling_nfe_generated: true
 }
 ```
 
-## 🛠️ Desenvolvimento
-
-### Estrutura do Projeto
+## 🛠️ Estrutura do Plugin
 
 ```
 src/
-├── api/          # Rotas da API (webhooks)
-├── services/     # BlingService
-├── workflows/    # Workflows de sincronização
-├── subscribers/  # Event handlers
-├── jobs/         # Jobs agendados
-├── types/        # Tipos TypeScript
-└── utils/        # Utilitários (BlingMapper)
-```
-
-### Compilação
-
-```bash
-npm run build
-```
-
-### Testes
-
-```bash
-npm test
+├── admin/              # Interface administrativa
+│   ├── routes/         # Páginas do admin
+│   ├── components/     # Componentes reutilizáveis
+│   ├── hooks/          # React hooks
+│   └── utils/          # Utilitários do admin
+├── api/                # Endpoints da API
+│   ├── admin/          # APIs do admin
+│   └── bling/          # Webhooks do Bling
+├── modules/            # Módulo principal
+│   └── bling/          # Service e tipos
+├── workflows/          # Workflows de sincronização
+├── subscribers/        # Event handlers
+├── jobs/               # Jobs agendados
+└── index.ts           # Configuração do plugin
 ```
 
 ## 🔒 Segurança
 
-- **OAuth 2.0**: Autenticação segura com tokens
-- **Webhook validation**: Validação de assinatura dos webhooks
-- **Rate limiting**: Respeita os limites da API do Bling
-- **Error handling**: Tratamento robusto de erros
+- **OAuth 2.0** com refresh automático
+- **Validação de webhooks** com assinatura
+- **Configurações no banco** (não em variáveis)
+- **Logs auditáveis** de todas as operações
+- **Rate limiting** respeitado
+
+## 📊 Monitoramento
+
+### Logs de Sincronização
+Acesse via banco de dados:
+```sql
+SELECT * FROM bling_sync_log
+ORDER BY created_at DESC;
+```
+
+### Status da Conexão
+Verificado automaticamente na interface admin.
+
+### Webhooks Recebidos
+```sql
+SELECT * FROM bling_webhook_log
+ORDER BY received_at DESC;
+```
 
 ## 🐛 Troubleshooting
 
-### Erro de Autenticação
-```bash
-# Verifique suas credenciais
-BLING_CLIENT_ID=correto
-BLING_CLIENT_SECRET=correto
-```
+### Plugin não aparece no Admin
+1. Verifique se `enableUI: true` está configurado
+2. Reinicie o servidor Medusa
+3. Limpe cache do navegador
 
-### Pedidos não sincronizando
-1. Verifique se `auto_sync_orders: true`
-2. Verifique logs do Medusa
-3. Confirme se o webhook está configurado
+### OAuth não funciona
+1. Verifique URL de callback no Bling
+2. Confirme Client ID e Secret
+3. Verifique logs do navegador
 
-### Problemas de Estoque
-1. Verifique se os produtos têm `bling_id` no metadata
-2. Confirme se `auto_sync_inventory: true`
-3. Verifique se o produto existe no Bling
+### Sincronização não funciona
+1. Verifique toggles de configuração
+2. Consulte logs de sincronização
+3. Teste conexão no admin
+
+## 📈 Performance
+
+- **Jobs em background** para operações pesadas
+- **Rate limiting** automático
+- **Retry logic** em falhas temporárias
+- **Processamento assíncrono** via workflows
+
+## 🆕 Migração da v1.0
+
+Se você já usa a v1.0:
+
+1. Remova configurações do `medusa-config.js`
+2. Atualize para v2.0: `npm install medusa-plugin-bling@2.0.0`
+3. Configure via interface admin
+4. Reauthorize OAuth
+5. Configure novos toggles
 
 ## 📞 Suporte
 
-- **Issues**: [GitHub Issues](https://github.com/your-username/medusa-plugin-bling/issues)
-- **Documentação**: [Bling API Docs](https://developer.bling.com.br/bling-api)
-- **Medusa Docs**: [Medusa Documentation](https://docs.medusajs.com/)
+- **Issues**: [GitHub Issues](https://github.com/ecouto/medusa-plugin-bling/issues)
+- **Documentação Bling**: [API Docs](https://developer.bling.com.br/)
+- **Documentação Medusa**: [Medusa v2 Docs](https://docs.medusajs.com/)
 
 ## 📄 Licença
 
@@ -254,4 +250,4 @@ Contribuições são bem-vindas! Por favor, veja [CONTRIBUTING.md](CONTRIBUTING.
 
 ---
 
-**Desenvolvido com ❤️ para o e-commerce brasileiro**
+**Plugin v2.0 - Integração completa e configurável para e-commerce brasileiro 🇧🇷**
