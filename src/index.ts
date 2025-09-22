@@ -1,12 +1,7 @@
-import { Module } from "@medusajs/framework/utils"
-import BlingService from "./modules/bling/bling"
-
 // Export types for consumers
 export * from "./modules/bling/types"
 export * from "./modules/bling/utils"
-
-// Export the service for direct usage
-export { BlingService }
+export { BlingService } from "./modules/bling"
 
 // Plugin configuration interface
 export interface BlingPluginOptions {
@@ -64,9 +59,9 @@ const defaultConfig: BlingPluginOptions["sync_config"] = {
   }
 }
 
-// Main plugin module
-export default Module("blingModule", {
-  service: BlingService,
+// Plugin export - will be automatically loaded by Medusa
+export default {
+  name: "medusa-plugin-bling",
   options: (options: BlingPluginOptions) => ({
     ...options,
     sync_config: {
@@ -86,4 +81,4 @@ export default Module("blingModule", {
       }
     }
   })
-})
+}
