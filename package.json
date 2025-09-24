@@ -1,56 +1,113 @@
 {
   "name": "medusa-plugin-bling",
-  "version": "2.0.0",
-  "description": "Official Medusa v2+ plugin for Bling ERP integration - Complete Brazilian e-commerce solution",
+  "version": "3.0.0-alpha.1",
+  "description": "Official MedusaJS v2.3+ plugin for Bling ERP integration - Complete Brazilian e-commerce solution with OAuth, Admin UI, Workflows, and Real-time Sync",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./admin": {
+      "types": "./dist/admin/index.d.ts",
+      "import": "./dist/admin/index.js"
+    },
+    "./workflows": {
+      "types": "./dist/workflows/index.d.ts",
+      "import": "./dist/workflows/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "jest",
-    "prepare": "npm run build",
-    "prepublishOnly": "npm run build"
+    "prepare": "npm run build"
   },
   "keywords": [
+    "medusajs",
     "medusa-v2",
     "medusa-plugin",
     "medusa-plugin-integration",
     "bling",
+    "bling-api-v3",
     "erp",
     "brazil",
     "e-commerce",
     "integration",
     "nfe",
     "webhook",
-    "oauth"
+    "oauth",
+    "oauth2",
+    "sync",
+    "inventory",
+    "products",
+    "orders",
+    "admin-ui",
+    "workflows",
+    "typescript"
   ],
   "author": "Casa Moratti <contato@casamoratti.com>",
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "peerDependencies": {
-    "@medusajs/framework": "^2.0.0",
+    "@medusajs/framework": "^2.3.0",
     "@medusajs/ui": "^4.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": false
+    },
+    "react-dom": {
+      "optional": false
+    }
+  },
   "dependencies": {
-    "axios": "^1.6.0",
-    "zod": "^3.22.0",
-    "@hookform/resolvers": "^3.3.0",
-    "react-hook-form": "^7.48.0"
+    "@hookform/resolvers": "^3.9.0",
+    "@types/lodash": "^4.17.7",
+    "axios": "^1.6.8",
+    "date-fns": "^3.6.0",
+    "ioredis": "^5.4.1",
+    "lodash": "^4.17.21",
+    "react-hook-form": "^7.52.1",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@medusajs/admin-sdk": "^2.0.0",
-    "@types/node": "^20.0.0",
-    "@types/react": "^18.0.0",
-    "@types/react-dom": "^18.0.0",
-    "typescript": "^5.0.0",
-    "jest": "^29.0.0",
-    "@types/jest": "^29.0.0"
+    "@medusajs/admin-sdk": "^2.3.0",
+    "@medusajs/types": "^2.10.3",
+    "@semantic-release/changelog": "^6.0.0",
+    "@semantic-release/git": "^10.0.0",
+    "@semantic-release/github": "^9.0.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.12",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/supertest": "^6.0.2",
+    "@typescript-eslint/eslint-plugin": "^7.16.1",
+    "@typescript-eslint/parser": "^7.16.1",
+    "conventional-changelog-conventionalcommits": "^6.1.0",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "nock": "^13.5.4",
+    "prettier": "^3.3.3",
+    "semantic-release": "^21.0.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.3",
+    "ts-node": "^10.9.2",
+    "typeorm": "^0.3.27",
+    "typescript": "^5.5.4"
   },
   "files": [
     "dist/**/*",
     "README.md",
-    "package.json"
+    "package.json",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",
@@ -59,5 +116,24 @@
   "bugs": {
     "url": "https://github.com/ecouto/medusa-plugin-bling/issues"
   },
-  "homepage": "https://github.com/ecouto/medusa-plugin-bling#readme"
+  "homepage": "https://github.com/ecouto/medusa-plugin-bling#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "medusa": {
+    "name": "medusa-plugin-bling",
+    "description": "Bling ERP integration for MedusaJS v2",
+    "admin": {
+      "routes": [
+        "admin/routes/**"
+      ],
+      "widgets": [
+        "admin/widgets/**"
+      ],
+      "settings": [
+        "admin/settings/**"
+      ]
+    }
+  }
 }

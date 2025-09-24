@@ -14,5 +14,12 @@ yarn-error.log*
 .idea/
 *.tsbuildinfo
 
-# Claude documentation (keep private for public repo)
+# Development files (keep private)
 CLAUDE.md
+plano_plugin.ts
+.claudeignore
+.eslintrc.js
+.releaserc.json
+jest.config.js
+CONTRIBUTING.md
+.github/
