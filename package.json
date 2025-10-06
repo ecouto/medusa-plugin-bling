@@ -121,6 +121,11 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
+  "release": {
+    "branches": [
+      "main"
+    ]
+  },
   "medusa": {
     "name": "medusa-plugin-bling",
     "description": "Bling ERP integration for MedusaJS v2",
