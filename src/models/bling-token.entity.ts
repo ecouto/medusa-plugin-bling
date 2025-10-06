@@ -1,10 +1,13 @@
 import { BaseEntity } from "@medusajs/medusa"
-import { Entity, Column, PrimaryColumn } from "typeorm"
+import { BeforeInsert, Column, Entity } from "typeorm"
+import { generateEntityId } from "@medusajs/utils"
 
 @Entity()
 export class BlingToken extends BaseEntity {
-  @PrimaryColumn()
-  id: string; // Should be a constant, e.g., 'bling_token'
+  // id is not primary, as we want a single row
+
+  @Column({ type: "varchar", primary: true })
+  id: string;
 
   @Column({ type: "varchar", nullable: false })
   access_token: string;
@@ -17,4 +20,11 @@ export class BlingToken extends BaseEntity {
 
   @Column({ type: "timestamp with time zone", nullable: false })
   updated_at: Date;
+
+  @BeforeInsert()
+  private beforeInsert(): void {
+    if (!this.id) {
+      this.id = "bling_token_id"; // Constant ID for single-row storage
+    }
+  }
 }

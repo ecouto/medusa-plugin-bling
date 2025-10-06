@@ -7,7 +7,7 @@ const TOKEN_ID = "bling_token";
 
 class BlingService extends TransactionBaseService {
   protected readonly logger_: Logger;
-  protected readonly blingTokenRepository_;
+  protected readonly blingTokenRepository_: typeof BlingToken;
 
   private clientId: string;
   private clientSecret: string;
@@ -16,8 +16,9 @@ class BlingService extends TransactionBaseService {
 
   constructor(container, options) {
     super(container)
-    this.logger_ = container.logger;
-    this.blingTokenRepository_ = this.activeManager_.getRepository(BlingToken);
+    const { blingTokenRepository, logger } = container;
+    this.logger_ = logger;
+    this.blingTokenRepository_ = blingTokenRepository;
 
     this.clientId = options.client_id;
     this.clientSecret = options.client_secret;
