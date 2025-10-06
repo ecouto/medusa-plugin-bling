@@ -1,17 +1,18 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/medusa"
-
-// Mock storage for settings. In a real implementation, this would use a database.
-let settings = {
-  client_id: "",
-  client_secret: "",
-};
+import BlingService from "../../../../modules/bling.service"
 
 // Handler to get current settings
 export async function GET(
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> {
-  res.status(200).json(settings);
+  const blingService: BlingService = req.scope.resolve("blingService");
+  const config = await blingService.getBlingConfig();
+  res.status(200).json({ 
+    client_id: config?.client_id || "", 
+    client_secret: config?.client_secret || "",
+    is_connected: !!config?.access_token
+  });
 }
 
 // Handler to save new settings
@@ -26,8 +27,8 @@ export async function POST(
     return;
   }
 
-  settings = { client_id, client_secret };
-  console.log("Bling settings updated:", settings);
+  const blingService: BlingService = req.scope.resolve("blingService");
+  await blingService.saveBlingConfig(client_id, client_secret);
 
-  res.status(200).json(settings);
+  res.status(200).json({ message: "Bling credentials saved successfully." });
 }

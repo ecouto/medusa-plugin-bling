@@ -9,8 +9,13 @@ export async function GET(
   const blingService: BlingService = req.scope.resolve("blingService");
   
   // The admin frontend URL, where Bling should redirect back to.
-  const redirectUri = `${req.get('origin')}/admin/bling/oauth/callback`;
+  const redirectUri = `${req.get('origin')}/a/settings/bling`;
 
-  const authUrl = await blingService.getAuthorizationUrl(redirectUri);
-  res.redirect(authUrl);
+  try {
+    const authUrl = await blingService.getAuthorizationUrl(redirectUri);
+    res.redirect(authUrl);
+  } catch (error) {
+    req.scope.resolve("logger").error("Failed to get Bling authorization URL:", error.message);
+    res.redirect(`/a/settings/bling?auth_error=true&message=${encodeURIComponent(error.message)}`);
+  }
 }

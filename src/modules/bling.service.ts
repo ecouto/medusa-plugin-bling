@@ -1,34 +1,50 @@
 import { TransactionBaseService, Logger } from "@medusajs/medusa"
 import { EntityManager } from "typeorm"
 import axios from "axios"
-import { BlingToken } from "../models/bling-token.entity"
+import { BlingConfig } from "../models/bling-config.entity"
 
-const TOKEN_ID = "bling_token";
+const BLING_CONFIG_ID = "bling_config";
 
 class BlingService extends TransactionBaseService {
   protected readonly logger_: Logger;
-  protected readonly blingTokenRepository_;
+  protected readonly blingConfigRepository_: typeof BlingConfig;
 
-  private clientId: string;
-  private clientSecret: string;
   private apiBaseUrl: string;
   private oauthUrl: string;
 
   constructor(container, options) {
     super(container)
-    this.logger_ = container.logger;
-    this.blingTokenRepository_ = this.activeManager_.getRepository(BlingToken);
+    const { blingConfigRepository, logger } = container;
+    this.logger_ = logger;
+    this.blingConfigRepository_ = blingConfigRepository;
 
-    this.clientId = options.client_id;
-    this.clientSecret = options.client_secret;
     this.apiBaseUrl = "https://api.bling.com.br/Api/v3";
     this.oauthUrl = "https://www.bling.com.br/Api/v3/oauth";
   }
 
+  async getBlingConfig(): Promise<BlingConfig | undefined> {
+    return await this.blingConfigRepository_.findOne({ where: { id: BLING_CONFIG_ID } });
+  }
+
+  async saveBlingConfig(clientId: string, clientSecret: string): Promise<BlingConfig> {
+    let config = await this.getBlingConfig();
+    if (!config) {
+      config = this.blingConfigRepository_.create({ id: BLING_CONFIG_ID });
+    }
+    config.client_id = clientId;
+    config.client_secret = clientSecret;
+    return await this.blingConfigRepository_.save(config);
+  }
+
   async getAuthorizationUrl(redirectUri: string): Promise<string> {
+    const config = await this.getBlingConfig();
+    if (!config?.client_id) {
+      throw new Error("Bling Client ID is not configured. Please save credentials first.");
+    }
+
     const params = new URLSearchParams({
       response_type: "code",
-      client_id: this.clientId,
+      client_id: config.client_id,
       redirect_uri: redirectUri,
       state: "medusa-bling-auth", // TODO: Use a random state
     });
@@ -37,78 +53,82 @@ class BlingService extends TransactionBaseService {
 
   async handleOAuthCallback(code: string): Promise<{ success: boolean }> {
     try {
+      const config = await this.getBlingConfig();
+      if (!config?.client_id || !config?.client_secret) {
+        throw new Error("Bling Client ID or Secret not configured.");
+      }
+
       const params = new URLSearchParams();
       params.append("grant_type", "authorization_code");
       params.append("code", code);
 
       const response = await axios.post(`${this.oauthUrl}/token`, params, {
         headers: {
-          "Authorization": `Basic ${Buffer.from(`${this.clientId}:${this.clientSecret}`).toString("base64")}`,
+          "Authorization": `Basic ${Buffer.from(`${config.client_id}:${config.client_secret}`).toString("base64")}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });
 
       const { access_token, refresh_token, expires_in } = response.data;
 
-      const token = this.blingTokenRepository_.create({
-        id: TOKEN_ID,
-        access_token,
-        refresh_token,
-        expires_in,
-        updated_at: new Date(),
-      });
+      config.access_token = access_token;
+      config.refresh_token = refresh_token;
+      config.expires_in = expires_in;
+      config.token_updated_at = new Date();
 
-      await this.blingTokenRepository_.save(token);
+      await this.blingConfigRepository_.save(config);
       this.logger_.info("Bling OAuth token saved successfully.");
       return { success: true };
     } catch (error) {
-      this.logger_.error("Bling OAuth callback failed:", error);
+      this.logger_.error("Bling OAuth callback failed:", error.response?.data || error.message);
       return { success: false };
     }
   }
 
   private async getAccessToken(): Promise<string> {
-    const token = await this.blingTokenRepository_.findOne({ where: { id: TOKEN_ID } });
-    if (!token) {
-      throw new Error("Bling token not found. Please authenticate.");
+    const config = await this.getBlingConfig();
+    if (!config?.access_token) {
+      throw new Error("Bling access token not found. Please authenticate.");
     }
 
     // Check if token is expired (with a 5-minute buffer)
     const now = new Date();
-    const expiryTime = new Date(token.updated_at.getTime() + (token.expires_in - 300) * 1000);
+    const expiryTime = new Date(config.token_updated_at.getTime() + (config.expires_in - 300) * 1000);
 
     if (now < expiryTime) {
-      return token.access_token;
+      return config.access_token;
     }
 
     // Token is expired, refresh it
     this.logger_.info("Bling access token expired, refreshing...");
     try {
+      if (!config?.client_id || !config?.client_secret || !config?.refresh_token) {
+        throw new Error("Missing Bling credentials or refresh token for renewal.");
+      }
+
       const params = new URLSearchParams();
       params.append("grant_type", "refresh_token");
-      params.append("refresh_token", token.refresh_token);
+      params.append("refresh_token", config.refresh_token);
 
       const response = await axios.post(`${this.oauthUrl}/token`, params, {
         headers: {
-          "Authorization": `Basic ${Buffer.from(`${this.clientId}:${this.clientSecret}`).toString("base64")}`,
+          "Authorization": `Basic ${Buffer.from(`${config.client_id}:${config.client_secret}`).toString("base64")}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });
 
       const { access_token, refresh_token, expires_in } = response.data;
-      const newToken = this.blingTokenRepository_.create({
-        ...token,
-        access_token,
-        refresh_token,
-        expires_in,
-        updated_at: new Date(),
-      });
+      
+      config.access_token = access_token;
+      config.refresh_token = refresh_token;
+      config.expires_in = expires_in;
+      config.token_updated_at = new Date();
 
-      await this.blingTokenRepository_.save(newToken);
+      await this.blingConfigRepository_.save(config);
       this.logger_.info("Bling access token refreshed and saved successfully.");
-      return newToken.access_token;
+      return config.access_token;
     } catch (error) {
-      this.logger_.error("Failed to refresh Bling access token:", error);
+      this.logger_.error("Failed to refresh Bling access token:", error.response?.data || error.message);
       throw new Error("Failed to refresh Bling token.");
     }
   }

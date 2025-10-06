@@ -1,9 +1,9 @@
-import { BlingToken } from "./models/bling-token.entity";
 import BlingService from "./modules/bling.service";
-import { CreateBlingTokenTable1728288000000 } from "./migrations/CreateBlingTokenTable";
+import { BlingConfig } from "./models/bling-config.entity";
+import { CreateBlingConfigTable1728288000001 } from "./migrations/CreateBlingConfigTable";
 
 export default {
   services: [BlingService],
-  models: [BlingToken],
-  migrations: [CreateBlingTokenTable1728288000000],
+  models: [BlingConfig],
+  migrations: [CreateBlingConfigTable1728288000001],
 };

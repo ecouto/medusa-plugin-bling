@@ -10,7 +10,7 @@ export async function GET(
 
   if (!code || typeof code !== 'string') {
     // Redirect to settings page with an error
-    return res.redirect(`/a/settings/bling?auth_error=true`);
+    return res.redirect(`/a/settings/bling?auth_error=true&message=${encodeURIComponent("Authorization code missing.")}`);
   }
 
   const blingService: BlingService = req.scope.resolve("blingService");
@@ -19,6 +19,6 @@ export async function GET(
   if (success) {
     res.redirect(`/a/settings/bling?auth_success=true`);
   } else {
-    res.redirect(`/a/settings/bling?auth_error=true`);
+    res.redirect(`/a/settings/bling?auth_error=true&message=${encodeURIComponent("Failed to exchange code for token.")}`);
   }
 }
