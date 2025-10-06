@@ -14,8 +14,8 @@ export async function GET(
   try {
     const authUrl = await blingService.getAuthorizationUrl(redirectUri);
     res.redirect(authUrl);
-  } catch (error) {
-    req.scope.resolve("logger").error("Failed to get Bling authorization URL:", error.message);
-    res.redirect(`/a/settings/bling?auth_error=true&message=${encodeURIComponent(error.message)}`);
+  } catch (error: unknown) {
+    req.scope.resolve("logger").error("Failed to get Bling authorization URL:", (error as any).message);
+    res.redirect(`/a/settings/bling?auth_error=true&message=${encodeURIComponent((error as any).message)}`);
   }
 }

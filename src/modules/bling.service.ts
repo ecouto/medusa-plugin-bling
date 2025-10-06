@@ -1,22 +1,27 @@
 import { TransactionBaseService, Logger } from "@medusajs/medusa"
-import { EntityManager } from "typeorm"
+import { EntityManager, Repository } from "typeorm"
 import axios from "axios"
 import { BlingConfig } from "../models/bling-config.entity"
 
 const BLING_CONFIG_ID = "bling_config";
 
+type InjectedDependencies = {
+  blingConfigRepository: Repository<BlingConfig>;
+  logger: Logger;
+  manager: EntityManager;
+};
+
 class BlingService extends TransactionBaseService {
   protected readonly logger_: Logger;
-  protected readonly blingConfigRepository_: typeof BlingConfig;
+  protected readonly blingConfigRepository_: Repository<BlingConfig>;
 
   private apiBaseUrl: string;
   private oauthUrl: string;
 
-  constructor(container, options) {
+  constructor(container: InjectedDependencies, options: Record<string, any>) {
     super(container)
-    const { blingConfigRepository, logger } = container;
-    this.logger_ = logger;
-    this.blingConfigRepository_ = blingConfigRepository;
+    this.logger_ = container.logger;
+    this.blingConfigRepository_ = container.blingConfigRepository;
 
     this.apiBaseUrl = "https://api.bling.com.br/Api/v3";
     this.oauthUrl = "https://www.bling.com.br/Api/v3/oauth";
@@ -79,13 +84,13 @@ class BlingService extends TransactionBaseService {
       await this.blingConfigRepository_.save(config);
       this.logger_.info("Bling OAuth token saved successfully.");
       return { success: true };
-    } catch (error) {
-      this.logger_.error("Bling OAuth callback failed:", error.response?.data || error.message);
+    } catch (error: unknown) {
+      this.logger_.error("Bling OAuth callback failed:", (error as any).response?.data || (error as any).message);
       return { success: false };
     }
   }
 
-  private async getAccessToken(): Promise<string> {
+  public async getAccessToken(): Promise<string> {
     const config = await this.getBlingConfig();
     if (!config?.access_token) {
       throw new Error("Bling access token not found. Please authenticate.");
@@ -93,7 +98,7 @@ class BlingService extends TransactionBaseService {
 
     // Check if token is expired (with a 5-minute buffer)
     const now = new Date();
-    const expiryTime = new Date(config.token_updated_at.getTime() + (config.expires_in - 300) * 1000);
+    const expiryTime = new Date(config.token_updated_at!.getTime() + (config.expires_in! - 300) * 1000);
 
     if (now < expiryTime) {
       return config.access_token;
@@ -127,8 +132,8 @@ class BlingService extends TransactionBaseService {
       await this.blingConfigRepository_.save(config);
       this.logger_.info("Bling access token refreshed and saved successfully.");
       return config.access_token;
-    } catch (error) {
-      this.logger_.error("Failed to refresh Bling access token:", error.response?.data || error.message);
+    } catch (error: unknown) {
+      this.logger_.error("Failed to refresh Bling access token:", (error as any).response?.data || (error as any).message);
       throw new Error("Failed to refresh Bling token.");
     }
   }
@@ -141,8 +146,8 @@ class BlingService extends TransactionBaseService {
       });
       this.logger_.info(`Successfully fetched ${response.data.data.length} products from Bling.`);
       return response.data.data;
-    } catch (error) {
-      this.logger_.error("Failed to fetch products from Bling:", error.response?.data || error.message);
+    } catch (error: unknown) {
+      this.logger_.error("Failed to fetch products from Bling:", (error as any).response?.data || (error as any).message);
       return [];
     }
   }

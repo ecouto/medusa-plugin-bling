@@ -14,7 +14,7 @@ export async function GET(
   }
 
   const blingService: BlingService = req.scope.resolve("blingService");
-  const { success } = await blingService.handleOAuthCallback(code);
+  const { success } = await blingService.handleOAuthCallback(code as string);
 
   if (success) {
     res.redirect(`/a/settings/bling?auth_success=true`);

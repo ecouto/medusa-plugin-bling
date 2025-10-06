@@ -16,8 +16,8 @@ export async function GET(
     } else {
       res.status(200).json({ status: "not_connected" });
     }
-  } catch (error) {
-    req.scope.resolve("logger").error("Bling health check failed:", error.message);
-    res.status(200).json({ status: "error", message: error.message });
+  } catch (error: unknown) {
+    req.scope.resolve("logger").error("Bling health check failed:", (error as any).message);
+    res.status(200).json({ status: "error", message: (error as any).message });
   }
 }

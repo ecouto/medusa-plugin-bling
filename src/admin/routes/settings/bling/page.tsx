@@ -75,7 +75,7 @@ const BlingSettingsPage = () => {
         })
         refetchConfig(); // Refresh config data
       },
-      onError: (error) => {
+      onError: (error: any) => {
         toast({
           variant: "error",
           title: "Erro",
@@ -98,7 +98,7 @@ const BlingSettingsPage = () => {
           description: "Buscando produtos e estoque do Bling. Verifique os logs do servidor para o resultado.",
         })
       },
-      onError: (error) => {
+      onError: (error: any) => {
         toast({
           variant: "error",
           title: "Erro",
