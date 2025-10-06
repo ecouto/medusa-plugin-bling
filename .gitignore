@@ -22,4 +22,4 @@ plano_plugin.ts
 .releaserc.json
 jest.config.js
 CONTRIBUTING.md
-.github/
+/
