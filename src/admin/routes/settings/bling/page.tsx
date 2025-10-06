@@ -16,54 +16,25 @@ type BlingForm = {
   client_secret: string
 }
 
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-y-4">
-            <Heading level="h2">Sincronização Manual</Heading>
-            <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
-                <div>
-                    <Text className="font-semibold">Produtos e Estoque</Text>
-                    <Text className="text-ui-fg-subtle">
-                        Clique para buscar todos os produtos e níveis de estoque do Bling. Isso pode levar alguns minutos.
-                    </Text>
-                </div>
-                <Button variant="secondary" onClick={() => syncMutate({})}>Sincronizar Agora</Button>
-            </div>
-          </div>
-
-        </div>
-        <div className="flex items-center justify-end gap-x-2">
-          <Button
-            variant="primary"
-            size="small"
-            onClick={handleSubmit(onSubmit)}
-            disabled={isLoading || isSaving}
-          >
-            Salvar
-          </Button>
-        </div>
-      </div>
-    </Container>
-  )
-}
-
 const BlingSettingsPage = () => {
   const { register, handleSubmit, reset } = useForm<BlingForm>()
   const { toast } = useToast()
 
+  // Fetch current settings
   const { data, isLoading } = useAdminCustomQuery<any, BlingForm>(
     "/bling/config",
     ["bling-settings"]
   )
 
+  // Set form values once data is loaded
   useEffect(() => {
     if (!isLoading && data) {
       reset(data)
     }
   }, [isLoading, data, reset])
 
-  const { mutate: saveMutate, isLoading: isSaving } = useAdminCustomMutation(
+  // Mutation to save settings
+  const { mutate } = useAdminCustomMutation(
     "/bling/config",
     "POST",
     ["bling-settings"],
@@ -85,30 +56,8 @@ const BlingSettingsPage = () => {
     }
   )
 
-  const { mutate: syncMutate } = useAdminCustomMutation(
-    "/bling/sync",
-    "POST",
-    [],
-    {
-      onSuccess: () => {
-        toast({
-          variant: "success",
-          title: "Sincronização Iniciada",
-          description: "Buscando produtos do Bling. Verifique os logs do servidor para o resultado.",
-        })
-      },
-      onError: () => {
-        toast({
-          variant: "error",
-          title: "Erro",
-          description: "Falha ao iniciar a sincronização.",
-        })
-      },
-    }
-  )
-
   const onSubmit = (formData: BlingForm) => {
-    saveMutate(formData)
+    mutate(formData)
   }
 
   return (
@@ -143,5 +92,22 @@ const BlingSettingsPage = () => {
                   disabled={isLoading}
                 />
               </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-x-2">
+          <Button
+            variant="primary"
+            size="small"
+            onClick={handleSubmit(onSubmit)}
+            disabled={isLoading}
+          >
+            Salvar
+          </Button>
+        </div>
+      </div>
+    </Container>
+  )
+}
 
 export default BlingSettingsPage
