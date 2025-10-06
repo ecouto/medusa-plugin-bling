@@ -5,11 +5,11 @@ import {
   Input,
   Label,
   Text,
+  useToast,
 } from "@medusajs/ui"
+import { useAdminCustomMutation, useAdminCustomQuery } from "medusa-react"
 import { useForm } from "react-hook-form"
-
-// TODO: Fetch and update settings via API
-// import { useAdminUpdateSettings, useAdminSettings } from "medusa-react"
+import { useEffect } from "react"
 
 type BlingForm = {
   client_id: string
@@ -17,17 +17,48 @@ type BlingForm = {
 }
 
 const BlingSettingsPage = () => {
-  const { register, handleSubmit } = useForm<BlingForm>()
+  const { register, handleSubmit, reset } = useForm<BlingForm>()
+  const { toast } = useToast()
 
-  // TODO: Replace with actual API call
-  const onSubmit = (data: BlingForm) => {
-    console.log("Saving settings:", data)
-    // const { mutate } = useAdminUpdateSettings() 
-    // mutate(data)
+  // Fetch current settings
+  const { data, isLoading } = useAdminCustomQuery<any, BlingForm>(
+    "/bling/config",
+    ["bling-settings"]
+  )
+
+  // Set form values once data is loaded
+  useEffect(() => {
+    if (!isLoading && data) {
+      reset(data)
+    }
+  }, [isLoading, data, reset])
+
+  // Mutation to save settings
+  const { mutate } = useAdminCustomMutation(
+    "/bling/config",
+    "POST",
+    ["bling-settings"],
+    {
+      onSuccess: () => {
+        toast({
+          variant: "success",
+          title: "Sucesso",
+          description: "Configurações do Bling salvas com sucesso.",
+        })
+      },
+      onError: () => {
+        toast({
+          variant: "error",
+          title: "Erro",
+          description: "Falha ao salvar as configurações do Bling.",
+        })
+      },
+    }
+  )
+
+  const onSubmit = (formData: BlingForm) => {
+    mutate(formData)
   }
-
-  // TODO: Load initial data
-  // const { settings } = useAdminSettings()
 
   return (
     <Container>
@@ -48,6 +79,7 @@ const BlingSettingsPage = () => {
                   id="client_id"
                   placeholder="Seu Client ID do Bling"
                   {...register("client_id")}
+                  disabled={isLoading}
                 />
               </div>
               <div className="flex flex-col gap-y-2">
@@ -57,6 +89,7 @@ const BlingSettingsPage = () => {
                   type="password"
                   placeholder="Seu Client Secret do Bling"
                   {...register("client_secret")}
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -67,6 +100,7 @@ const BlingSettingsPage = () => {
             variant="primary"
             size="small"
             onClick={handleSubmit(onSubmit)}
+            disabled={isLoading}
           >
             Salvar
           </Button>
