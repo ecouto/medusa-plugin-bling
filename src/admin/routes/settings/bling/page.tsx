@@ -5,13 +5,13 @@ import {
   Input,
   Label,
   Text,
-  useToast,
   Badge,
 } from "@medusajs/ui"
 import { useAdminCustomMutation, useAdminCustomQuery } from "medusa-react"
 import { useForm } from "react-hook-form"
 import { useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
+import { useToast } from "@medusajs/ui-next"; // Corrected import for useToast
 
 type BlingConfigForm = {
   client_id: string
@@ -47,14 +47,22 @@ const BlingSettingsPage = () => {
   // Handle OAuth callback messages
   useEffect(() => {
     if (searchParams.get("auth_success")) {
-      toast({ variant: "success", title: "Sucesso", description: "Bling conectado com sucesso!" })
+      toast({
+        variant: "success",
+        title: "Sucesso",
+        description: "Bling conectado com sucesso!"
+      })
       refetchHealth(); // Refresh connection status
       searchParams.delete("auth_success")
       setSearchParams(searchParams)
     }
     if (searchParams.get("auth_error")) {
       const errorMessage = searchParams.get("message") || "Falha ao conectar com o Bling.";
-      toast({ variant: "error", title: "Erro", description: errorMessage })
+      toast({
+        variant: "error",
+        title: "Erro",
+        description: errorMessage
+      })
       searchParams.delete("auth_error")
       searchParams.delete("message")
       setSearchParams(searchParams)

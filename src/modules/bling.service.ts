@@ -18,7 +18,7 @@ class BlingService extends TransactionBaseService {
   private apiBaseUrl: string;
   private oauthUrl: string;
 
-  constructor(container: InjectedDependencies, options: Record<string, any>) {
+  constructor(container: InjectedDependencies, options?: Record<string, any>) {
     super(container)
     this.logger_ = container.logger;
     this.blingConfigRepository_ = container.blingConfigRepository;
@@ -27,7 +27,7 @@ class BlingService extends TransactionBaseService {
     this.oauthUrl = "https://www.bling.com.br/Api/v3/oauth";
   }
 
-  async getBlingConfig(): Promise<BlingConfig | undefined> {
+  async getBlingConfig(): Promise<BlingConfig | null> {
     return await this.blingConfigRepository_.findOne({ where: { id: BLING_CONFIG_ID } });
   }
 
@@ -92,13 +92,13 @@ class BlingService extends TransactionBaseService {
 
   public async getAccessToken(): Promise<string> {
     const config = await this.getBlingConfig();
-    if (!config?.access_token) {
-      throw new Error("Bling access token not found. Please authenticate.");
+    if (!config?.access_token || !config.token_updated_at || config.expires_in === null) {
+      throw new Error("Bling access token not found or invalid. Please authenticate.");
     }
 
     // Check if token is expired (with a 5-minute buffer)
     const now = new Date();
-    const expiryTime = new Date(config.token_updated_at!.getTime() + (config.expires_in! - 300) * 1000);
+    const expiryTime = new Date(config.token_updated_at.getTime() + (config.expires_in - 300) * 1000);
 
     if (now < expiryTime) {
       return config.access_token;
