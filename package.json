@@ -12,7 +12,8 @@
     },
     "./admin": {
       "types": "./dist/admin/index.d.ts",
-      "import": "./dist/admin/index.js"
+      "import": "./dist/admin/index.js",
+      "require": "./dist/admin/index.js"
     },
     "./package.json": {
       "default": "./package.json"
