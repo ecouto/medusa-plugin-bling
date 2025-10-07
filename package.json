@@ -1,22 +1,18 @@
 {
   "name": "medusa-plugin-bling",
-  "version": "3.0.0-alpha.3",
+  "version": "3.0.0-alpha.5",
   "description": "Official MedusaJS v2.3+ plugin for Bling ERP integration - Complete Brazilian e-commerce solution with OAuth, Admin UI, Workflows, and Real-time Sync",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/src/index.d.ts",
-      "import": "./dist/src/index.js",
-      "require": "./dist/src/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
     },
     "./admin": {
-      "types": "./dist/src/admin/index.d.ts",
-      "import": "./dist/src/admin/index.js"
-    },
-    "./workflows": {
-      "types": "./dist/src/workflows/index.d.ts",
-      "import": "./dist/src/workflows/index.js"
+      "types": "./dist/admin/index.d.ts",
+      "import": "./dist/admin/index.js"
     },
     "./package.json": {
       "default": "./package.json"
