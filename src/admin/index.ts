@@ -2,7 +2,9 @@ import BlingSettingsPage, {
   config as blingSettingsConfig,
 } from "./settings/bling-settings"
 
-export const widgets: (() => JSX.Element)[] = []
+export const widgets: Array<() => JSX.Element> = []
+export const routes: never[] = []
+export const settings: never[] = []
 
 const entry = {
   identifier: "medusa-plugin-bling",
@@ -13,6 +15,8 @@ const entry = {
     },
   ],
   widgets,
+  routes,
+  settings,
 }
 
 export default entry
