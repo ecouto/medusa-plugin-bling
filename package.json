@@ -18,7 +18,9 @@
       "types": "./dist/src/workflows/index.d.ts",
       "import": "./dist/src/workflows/index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": {
+      "default": "./package.json"
+    }
   },
   "scripts": {
     "build": "tsc",
