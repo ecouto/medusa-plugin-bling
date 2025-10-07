@@ -1,5 +1,5 @@
-import { MedusaRequest, MedusaResponse } from "@medusajs/medusa"
-import BlingService from "../../../../modules/bling.service"
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/dist/http"
+import BlingService from "../../../../../modules/bling.service"
 
 // Handles the callback from Bling after authorization
 export async function GET(

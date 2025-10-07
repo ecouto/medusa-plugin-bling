@@ -8,9 +8,11 @@ export class CreateBlingConfigTable1728288000001 implements MigrationInterface {
                 "client_id" character varying,
                 "client_secret" character varying,
                 "access_token" character varying,
+                "webhook_secret" character varying,
                 "refresh_token" character varying,
                 "expires_in" integer,
-                "token_updated_at" TIMESTAMP WITH TIME ZONE
+                "token_updated_at" TIMESTAMP WITH TIME ZONE,
+                "sync_preferences" jsonb
             );
         `);
     }

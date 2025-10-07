@@ -1,4 +1,4 @@
-import { MedusaRequest, MedusaResponse } from "@medusajs/medusa"
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/dist/http"
 import BlingService from "../../../../modules/bling.service"
 
 // Checks if a valid token exists in the database
