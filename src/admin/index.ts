@@ -1,11 +1,15 @@
-import BlingSettingsWidget from "./widgets/bling-settings-widget";
+import BlingSettingsPage, {
+  config as blingSettingsConfig,
+} from "./settings/bling-settings"
 
-export const widgets = [
-    BlingSettingsWidget,
-];
+const entry = {
+  identifier: "medusa-plugin-bling",
+  extensions: [
+    {
+      Component: BlingSettingsPage,
+      config: { ...blingSettingsConfig, type: "setting" as const },
+    },
+  ],
+}
 
-const adminIntegration = {
-    widgets,
-};
-
-export default adminIntegration;
+export default entry
