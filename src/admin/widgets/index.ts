@@ -8,4 +8,8 @@ export type WidgetExtension = {
 
 export const widgets: WidgetExtension[] = [];
 
-export default widgets;
+const widgetModule = {
+  widgets,
+};
+
+export default widgetModule;
