@@ -1,6 +1,8 @@
 import BlingSettingsPage, { config as blingSettingsConfig } from "./settings/bling-settings"
+import { widgets } from "./widgets"
 
-export const widgets: Array<() => JSX.Element> = []
+export { widgets } from "./widgets"
+
 export const routes: never[] = []
 export const settings = [
   {
@@ -16,10 +18,10 @@ const entry = {
       Component: BlingSettingsPage,
       config: { ...blingSettingsConfig, type: "setting" as const },
     },
-  ],
-  widgets,
-  routes,
-  settings,
+    ],
+    widgets,
+    routes,
+    settings,
 }
 
 export default entry
