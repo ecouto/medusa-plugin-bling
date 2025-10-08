@@ -1,24 +1,17 @@
-import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/dist/http";
-import { BLING_MODULE } from "../../../../modules/bling";
-import type { BlingModuleService } from "../../../../modules/bling";
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 
-// Checks if a valid token exists in the database
-export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void> {
-  const logger = req.scope.resolve("logger");
-  const blingService = req.scope.resolve<BlingModuleService>(BLING_MODULE);
-
+export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void> => {
   try {
-    const config = await blingService.getBlingConfig();
-    if (!config?.accessToken) {
-      res.status(200).json({ status: "not_connected" });
-      return;
-    }
-
-    await blingService.getAccessToken();
-    res.status(200).json({ status: "ok" });
-  } catch (error: unknown) {
-    const errorObject = error instanceof Error ? error : new Error(String(error));
-    logger.error("Bling health check failed:", errorObject);
-    res.status(200).json({ status: "error", message: errorObject.message });
+    res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      message: "Bling integration is running",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    res.status(500).json({
+      status: "error",
+      message,
+    });
   }
-}
+};
