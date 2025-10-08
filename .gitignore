@@ -15,9 +15,13 @@ yarn-error.log*
 .idea/
 *.tsbuildinfo
 .cursor/
+*ignore
+!.gitignore
+!.npmignore
 
 # Documentation
 *.md
 !README.md
 !LICENSE
 !CONTRIBUTING.md
+!RELEASE.md
