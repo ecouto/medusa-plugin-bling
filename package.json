@@ -75,10 +75,12 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
+    "@medusajs/utils": "^1.11.11",
     "@mikro-orm/core": "^6.4.3",
     "@mikro-orm/migrations": "^6.4.3",
     "@mikro-orm/postgresql": "^6.4.3",
     "@types/lodash": "^4.17.7",
+    "awilix": "^8.0.1",
     "axios": "^1.6.8",
     "date-fns": "^3.6.0",
     "ioredis": "^5.4.1",
