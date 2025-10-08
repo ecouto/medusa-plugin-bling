@@ -1,8 +1,6 @@
 import BlingSettingsPage, { config as blingSettingsConfig } from "./settings/bling-settings";
-import BlingSettingsRoute, {
-  config as blingSettingsRouteConfig,
-} from "./routes/settings/bling/page";
-import widgetModule from "./widgets";
+import BlingSettingsRoute, { config as blingSettingsRouteConfig } from "./routes/settings/bling/page";
+import { widgets } from "./widgets";
 
 export const routes = [
   {
@@ -18,15 +16,13 @@ export const settings = [
   },
 ];
 
-export const widgets = widgetModule.widgets;
+export { widgets };
 
 const entry = {
   identifier: "medusa-plugin-bling",
-  extensions: {
-    routes,
-    settings,
-    widgets,
-  },
+  routes,
+  settings,
+  widgets,
 };
 
 export default entry;
