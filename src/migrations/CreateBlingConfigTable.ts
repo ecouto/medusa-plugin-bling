@@ -1,23 +1,23 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { Migration } from "@mikro-orm/migrations";
 
-export class CreateBlingConfigTable1728288000001 implements MigrationInterface {
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
-            CREATE TABLE IF NOT EXISTS "bling_config" (
-                "id" character varying NOT NULL PRIMARY KEY,
-                "client_id" character varying,
-                "client_secret" character varying,
-                "access_token" character varying,
-                "webhook_secret" character varying,
-                "refresh_token" character varying,
-                "expires_in" integer,
-                "token_updated_at" TIMESTAMP WITH TIME ZONE,
-                "sync_preferences" jsonb
-            );
-        `);
-    }
+export class CreateBlingConfigTable1728288000001 extends Migration {
+  async up(): Promise<void> {
+    this.addSql(`
+      create table if not exists "bling_config" (
+        "id" text not null primary key,
+        "client_id" text null,
+        "client_secret" text null,
+        "access_token" text null,
+        "webhook_secret" text null,
+        "refresh_token" text null,
+        "expires_in" integer null,
+        "token_updated_at" timestamptz null,
+        "sync_preferences" jsonb null
+      );
+    `);
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP TABLE IF EXISTS "bling_config";`);
-    }
+  override async down(): Promise<void> {
+    this.addSql(`drop table if exists "bling_config" cascade;`);
+  }
 }

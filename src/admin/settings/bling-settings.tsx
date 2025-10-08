@@ -1,11 +1,26 @@
-import BlingSettingsPage from "../routes/settings/bling/page"
+import type { ComponentType } from "react";
+import BlingSettingsPage from "../routes/settings/bling/page";
 
-export const config = {
-  path: "/bling",
+type SettingCardConfig = {
+  label: string;
+  description?: string;
+  icon?: ComponentType;
+};
+
+type SettingsConfig = {
+  /**
+   * Relative route path under /a
+   */
+  path: string;
+  card: SettingCardConfig;
+};
+
+export const config: SettingsConfig = {
+  path: "/settings/bling",
   card: {
-    label: "Bling",
-    description: "Configure credenciais, sincronização e pedidos da integração do Bling ERP.",
+    label: "Bling ERP",
+    description: "Configure credenciais, sincronização e pedidos da integração com o Bling ERP.",
   },
-}
+};
 
-export default BlingSettingsPage
+export default BlingSettingsPage;

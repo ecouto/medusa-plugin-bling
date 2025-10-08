@@ -3,6 +3,13 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@medusajs/framework/*": ["node_modules/@medusajs/framework/dist/*"],
+      "@medusajs/framework": ["node_modules/@medusajs/framework/dist/index"],
+      "@medusajs/types": ["node_modules/@medusajs/types/dist/index"],
+      "@medusajs/types/*": ["node_modules/@medusajs/types/dist/*"]
+    },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "declaration": true,
     "declarationMap": true,

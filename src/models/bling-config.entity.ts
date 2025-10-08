@@ -1,68 +1,57 @@
-import {
-  BaseEntity,
-  BeforeInsert,
-  Column,
-  Entity,
-  PrimaryColumn,
-} from "typeorm"
+import { Entity, JsonType, PrimaryKey, Property } from "@mikro-orm/core";
 
 export interface SyncPreferences {
   products: {
-    enabled: boolean
-    import_images: boolean
-    import_descriptions: boolean
-    import_prices: boolean
-  }
+    enabled: boolean;
+    import_images: boolean;
+    import_descriptions: boolean;
+    import_prices: boolean;
+  };
   inventory: {
-    enabled: boolean
-    bidirectional: boolean
-    locations: InventoryLocationMapping[]
-  }
+    enabled: boolean;
+    bidirectional: boolean;
+    locations: InventoryLocationMapping[];
+  };
   orders: {
-    enabled: boolean
-    send_to_bling: boolean
-    receive_from_bling: boolean
-    generate_nf: boolean
-  }
+    enabled: boolean;
+    send_to_bling: boolean;
+    receive_from_bling: boolean;
+    generate_nf: boolean;
+  };
 }
 
 export interface InventoryLocationMapping {
-  stock_location_id: string
-  bling_deposit_id: string
-  is_default?: boolean
+  stock_location_id: string;
+  bling_deposit_id: string;
+  is_default?: boolean;
 }
 
-@Entity({ name: "bling_config" })
-export class BlingConfig extends BaseEntity {
-  @PrimaryColumn({ type: "varchar", length: 64 })
-  id!: string;
+@Entity({ tableName: "bling_config" })
+export class BlingConfig {
+  @PrimaryKey({ type: "string", columnType: "text" })
+  id = "bling_config";
 
-  @Column({ type: "varchar", nullable: true })
-  client_id: string | null = null;
+  @Property({ nullable: true, columnType: "text", fieldName: "client_id" })
+  clientId: string | null = null;
 
-  @Column({ type: "varchar", nullable: true })
-  client_secret: string | null = null;
+  @Property({ nullable: true, columnType: "text", fieldName: "client_secret" })
+  clientSecret: string | null = null;
 
-  @Column({ type: "varchar", nullable: true })
-  access_token: string | null = null;
+  @Property({ nullable: true, columnType: "text", fieldName: "access_token" })
+  accessToken: string | null = null;
 
-  @Column({ type: "varchar", nullable: true })
-  webhook_secret: string | null = null;
+  @Property({ nullable: true, columnType: "text", fieldName: "webhook_secret" })
+  webhookSecret: string | null = null;
 
-  @Column({ type: "varchar", nullable: true })
-  refresh_token: string | null = null;
+  @Property({ nullable: true, columnType: "text", fieldName: "refresh_token" })
+  refreshToken: string | null = null;
 
-  @Column({ type: "int", nullable: true })
-  expires_in: number | null = null;
+  @Property({ nullable: true, columnType: "integer", fieldName: "expires_in" })
+  expiresIn: number | null = null;
 
-  @Column({ type: "timestamp with time zone", nullable: true })
-  token_updated_at: Date | null = null;
+  @Property({ nullable: true, columnType: "timestamptz", fieldName: "token_updated_at" })
+  tokenUpdatedAt: Date | null = null;
 
-  @Column({ type: "jsonb", nullable: true })
-  sync_preferences: SyncPreferences | null = null;
-
-  @BeforeInsert()
-  private beforeInsert(): void {
-    this.id = "bling_config";
-  }
+  @Property({ nullable: true, type: JsonType, fieldName: "sync_preferences" })
+  syncPreferences: SyncPreferences | null = null;
 }

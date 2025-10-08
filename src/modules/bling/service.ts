@@ -1,45 +1,64 @@
+import type { InternalModuleDeclaration } from "@medusajs/framework/types";
+import { MedusaService } from "@medusajs/framework/utils";
 import type {
   IProductModuleService,
   Logger,
   ProductDTO,
   UpsertProductDTO,
   UpsertProductVariantDTO,
-} from "@medusajs/types"
-import type { Repository } from "typeorm"
-import axios, { type AxiosInstance } from "axios"
-import type { InventoryLocationMapping, SyncPreferences } from "../models/bling-config.entity"
-import { BlingConfig } from "../models/bling-config.entity"
+} from "@medusajs/types";
+import type { EntityRepository } from "@mikro-orm/core";
+import type { SqlEntityManager } from "@mikro-orm/postgresql";
+import axios from "axios";
+import type { AxiosError, AxiosInstance } from "axios";
+import { BlingConfig } from "../../models/bling-config.entity";
+import type { InventoryLocationMapping, SyncPreferences } from "../../models/bling-config.entity";
 
 const BLING_CONFIG_ID = "bling_config";
 
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+interface JsonObject {
+  [key: string]: JsonValue;
+}
+
 type InjectedDependencies = {
-  blingConfigRepository: Repository<BlingConfig>;
+  manager: SqlEntityManager;
   logger: Logger;
-  productModuleService?: IProductModuleService | undefined;
+  productModuleService?: IProductModuleService;
+};
+
+export type BlingModuleOptions = {
+  apiBaseUrl?: string;
+  oauthBaseUrl?: string;
+};
+
+const DEFAULT_MODULE_OPTIONS: Required<BlingModuleOptions> = {
+  apiBaseUrl: "https://api.bling.com.br/Api/v3",
+  oauthBaseUrl: "https://www.bling.com.br/Api/v3/oauth",
 };
 
 export type BlingSyncPreferencesInput = {
   products?:
     | {
-        enabled?: boolean | undefined;
-        import_images?: boolean | undefined;
-        import_descriptions?: boolean | undefined;
-        import_prices?: boolean | undefined;
+        enabled?: boolean;
+        import_images?: boolean;
+        import_descriptions?: boolean;
+        import_prices?: boolean;
       }
     | undefined;
   inventory?:
     | {
-        enabled?: boolean | undefined;
-        bidirectional?: boolean | undefined;
-        locations?: InventoryLocationMapping[] | undefined;
+        enabled?: boolean;
+        bidirectional?: boolean;
+        locations?: InventoryLocationMapping[];
       }
     | undefined;
   orders?:
     | {
-        enabled?: boolean | undefined;
-        send_to_bling?: boolean | undefined;
-        receive_from_bling?: boolean | undefined;
-        generate_nf?: boolean | undefined;
+        enabled?: boolean;
+        send_to_bling?: boolean;
+        receive_from_bling?: boolean;
+        generate_nf?: boolean;
       }
     | undefined;
 };
@@ -48,7 +67,7 @@ type UpdateBlingConfigInput = {
   clientId?: string | null;
   clientSecret?: string | null;
   webhookSecret?: string | null;
-  syncPreferences?: BlingSyncPreferencesInput | undefined;
+  syncPreferences?: BlingSyncPreferencesInput;
 };
 
 const DEFAULT_SYNC_PREFERENCES: SyncPreferences = {
@@ -72,116 +91,131 @@ const DEFAULT_SYNC_PREFERENCES: SyncPreferences = {
 };
 
 export interface BlingProductStockSnapshot {
-  warehouse_id: string | null
-  quantity: number | null
+  warehouse_id: string | null;
+  quantity: number | null;
 }
 
 export interface BlingProductVariantSnapshot {
-  external_id: string | null
-  sku: string | null
-  barcode: string | null
-  price: number | null
-  currency: string | null
-  weight_kg: number | null
-  depth_cm: number | null
-  height_cm: number | null
-  width_cm: number | null
-  stock: BlingProductStockSnapshot[]
+  external_id: string | null;
+  sku: string | null;
+  barcode: string | null;
+  price: number | null;
+  currency: string | null;
+  weight_kg: number | null;
+  depth_cm: number | null;
+  height_cm: number | null;
+  width_cm: number | null;
+  stock: BlingProductStockSnapshot[];
 }
 
 export interface BlingProductSnapshot {
-  external_id: string
-  name: string
-  description?: string
-  price?: number | null
-  currency?: string | null
-  sku?: string | null
-  images: string[]
-  stock: BlingProductStockSnapshot[]
-  variants: BlingProductVariantSnapshot[]
-  raw: unknown
+  external_id: string;
+  name: string;
+  description?: string;
+  price?: number | null;
+  currency?: string | null;
+  sku?: string | null;
+  images: string[];
+  stock: BlingProductStockSnapshot[];
+  variants: BlingProductVariantSnapshot[];
+  raw: JsonObject;
 }
 
-class BlingService {
+class BlingModuleService extends MedusaService({ BlingConfig }) {
   private readonly logger: Logger;
-  private readonly blingConfigRepository: Repository<BlingConfig>;
-  private readonly productModuleService: IProductModuleService | undefined;
+  private readonly configRepository: EntityRepository<BlingConfig>;
+  private readonly productModuleService?: IProductModuleService;
+  private readonly apiBaseUrl: string;
+  private readonly oauthBaseUrl: string;
 
-  private apiBaseUrl: string;
-  private oauthUrl: string;
+  constructor(
+    { manager, logger, productModuleService }: InjectedDependencies,
+    moduleDeclaration: InternalModuleDeclaration,
+    options: BlingModuleOptions = {}
+  ) {
+    super({ manager, logger, productModuleService }, moduleDeclaration, options);
 
-  constructor(dependencies: InjectedDependencies) {
-    this.logger = dependencies.logger;
-    this.blingConfigRepository = dependencies.blingConfigRepository;
-    this.productModuleService = dependencies.productModuleService;
+    this.logger = logger;
+    if (productModuleService) {
+      this.productModuleService = productModuleService;
+    }
+    this.configRepository = manager.getRepository(BlingConfig);
 
-    this.apiBaseUrl = "https://api.bling.com.br/Api/v3";
-    this.oauthUrl = "https://www.bling.com.br/Api/v3/oauth";
+    const mergedOptions: Required<BlingModuleOptions> = {
+      ...DEFAULT_MODULE_OPTIONS,
+      ...options,
+    };
+
+    this.apiBaseUrl = mergedOptions.apiBaseUrl;
+    this.oauthBaseUrl = mergedOptions.oauthBaseUrl;
   }
 
   async getBlingConfig(): Promise<BlingConfig | null> {
-    const config = await this.blingConfigRepository.findOne({ where: { id: BLING_CONFIG_ID } });
-    if (config) {
-      config.sync_preferences = this.mergePreferences(
-        {},
-        config.sync_preferences ?? undefined
-      );
+    const config = await this.configRepository.findOne({ id: BLING_CONFIG_ID });
+    if (!config) {
+      return null;
     }
+
+    config.syncPreferences = this.mergePreferences({}, config.syncPreferences ?? undefined);
+
     return config;
   }
 
   async saveBlingConfig(data: UpdateBlingConfigInput): Promise<BlingConfig> {
-    let config = await this.getBlingConfig();
-    if (!config) {
-      config = this.blingConfigRepository.create({ id: BLING_CONFIG_ID });
-    }
+    const existing = await this.configRepository.findOne({ id: BLING_CONFIG_ID });
+    const config = existing ?? new BlingConfig();
 
     if (data.clientId !== undefined) {
-      const trimmed = data.clientId?.trim() ?? null;
-      config.client_id = trimmed && trimmed.length > 0 ? trimmed : null;
+      const sanitized = data.clientId?.trim() ?? null;
+      config.clientId = sanitized && sanitized.length > 0 ? sanitized : null;
     }
 
     if (data.clientSecret !== undefined) {
-      const trimmed = data.clientSecret?.trim() ?? null;
-      config.client_secret = trimmed && trimmed.length > 0 ? trimmed : null;
+      const sanitized = data.clientSecret?.trim() ?? null;
+      config.clientSecret = sanitized && sanitized.length > 0 ? sanitized : null;
     }
 
     if (data.webhookSecret !== undefined) {
-      const trimmed = data.webhookSecret?.trim() ?? null;
-      config.webhook_secret = trimmed && trimmed.length > 0 ? trimmed : null;
+      const sanitized = data.webhookSecret?.trim() ?? null;
+      config.webhookSecret = sanitized && sanitized.length > 0 ? sanitized : null;
     }
 
     if (data.syncPreferences !== undefined) {
-      config.sync_preferences = this.mergePreferences(
+      config.syncPreferences = this.mergePreferences(
         data.syncPreferences,
-        config.sync_preferences ?? undefined
+        config.syncPreferences ?? undefined
       );
-    } else if (!config.sync_preferences) {
-      config.sync_preferences = this.mergePreferences();
+    } else if (!config.syncPreferences) {
+      config.syncPreferences = this.mergePreferences();
     }
 
-    return await this.blingConfigRepository.save(config);
+    const entityManager = this.configRepository.getEntityManager();
+    entityManager.persist(config);
+    await entityManager.flush();
+
+    return config;
   }
 
   async getAuthorizationUrl(redirectUri: string): Promise<string> {
     const config = await this.getBlingConfig();
-    if (!config?.client_id) {
+    if (!config?.clientId) {
       throw new Error("Bling Client ID is not configured. Please save credentials first.");
     }
 
     const params = new URLSearchParams({
       response_type: "code",
-      client_id: config.client_id,
+      client_id: config.clientId,
       redirect_uri: redirectUri,
-      state: "medusa-bling-auth", // TODO: Use a random state
+      state: "medusa-bling-auth",
     });
-    return `${this.oauthUrl}/authorize?${params.toString()}`;
+
+    return `${this.oauthBaseUrl}/authorize?${params.toString()}`;
   }
 
   async handleOAuthCallback(code: string): Promise<{ success: boolean }> {
     try {
       const config = await this.getBlingConfig();
-      if (!config?.client_id || !config?.client_secret) {
+      if (!config?.clientId || !config?.clientSecret) {
         throw new Error("Bling Client ID or Secret not configured.");
       }
 
@@ -189,101 +223,110 @@ class BlingService {
       params.append("grant_type", "authorization_code");
       params.append("code", code);
 
-      const response = await axios.post(`${this.oauthUrl}/token`, params, {
+      const response = await axios.post(`${this.oauthBaseUrl}/token`, params, {
         headers: {
-          "Authorization": `Basic ${Buffer.from(`${config.client_id}:${config.client_secret}`).toString("base64")}`,
+          Authorization: `Basic ${Buffer.from(`${config.clientId}:${config.clientSecret}`).toString(
+            "base64"
+          )}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });
 
       const { access_token, refresh_token, expires_in } = response.data;
 
-      config.access_token = access_token;
-      config.refresh_token = refresh_token;
-      config.expires_in = expires_in;
-      config.token_updated_at = new Date();
+      config.accessToken = access_token;
+      config.refreshToken = refresh_token;
+      config.expiresIn = expires_in;
+      config.tokenUpdatedAt = new Date();
 
-      await this.blingConfigRepository.save(config);
+      const entityManager = this.configRepository.getEntityManager();
+      entityManager.persist(config);
+      await entityManager.flush();
+
       this.logger.info("Bling OAuth token saved successfully.");
       return { success: true };
-    } catch (error: unknown) {
-      this.logger.error("Bling OAuth callback failed:", (error as any).response?.data || (error as any).message);
+    } catch (error) {
+      this.logger.error(`Bling OAuth callback failed: ${this.describeAxiosError(error)}`);
       return { success: false };
     }
   }
 
-  public async getAccessToken(): Promise<string> {
+  async getAccessToken(): Promise<string> {
     const config = await this.getBlingConfig();
-    if (!config?.access_token || !config.token_updated_at || config.expires_in === null) {
+    if (!config?.accessToken || !config.tokenUpdatedAt || config.expiresIn === null) {
       throw new Error("Bling access token not found or invalid. Please authenticate.");
     }
 
-    // Check if token is expired (with a 5-minute buffer)
     const now = new Date();
-    const expiryTime = new Date(config.token_updated_at.getTime() + (config.expires_in - 300) * 1000);
+    const expiryTime = new Date(config.tokenUpdatedAt.getTime() + (config.expiresIn - 300) * 1000);
 
     if (now < expiryTime) {
-      return config.access_token;
+      return config.accessToken;
     }
 
-    // Token is expired, refresh it
     this.logger.info("Bling access token expired, refreshing...");
+
     try {
-      if (!config?.client_id || !config?.client_secret || !config?.refresh_token) {
+      if (!config.clientId || !config.clientSecret || !config.refreshToken) {
         throw new Error("Missing Bling credentials or refresh token for renewal.");
       }
 
       const params = new URLSearchParams();
       params.append("grant_type", "refresh_token");
-      params.append("refresh_token", config.refresh_token);
+      params.append("refresh_token", config.refreshToken);
 
-      const response = await axios.post(`${this.oauthUrl}/token`, params, {
+      const response = await axios.post(`${this.oauthBaseUrl}/token`, params, {
         headers: {
-          "Authorization": `Basic ${Buffer.from(`${config.client_id}:${config.client_secret}`).toString("base64")}`,
+          Authorization: `Basic ${Buffer.from(`${config.clientId}:${config.clientSecret}`).toString(
+            "base64"
+          )}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });
 
       const { access_token, refresh_token, expires_in } = response.data;
-      
-      config.access_token = access_token;
-      config.refresh_token = refresh_token;
-      config.expires_in = expires_in;
-      config.token_updated_at = new Date();
 
-      await this.blingConfigRepository.save(config);
-      this.logger.info("Bling access token refreshed and saved successfully.");
+      config.accessToken = access_token;
+      config.refreshToken = refresh_token;
+      config.expiresIn = expires_in;
+      config.tokenUpdatedAt = new Date();
+
+      const entityManager = this.configRepository.getEntityManager();
+      entityManager.persist(config);
+      await entityManager.flush();
+
+      this.logger.info("Bling access token refreshed successfully.");
       return access_token;
-    } catch (error: unknown) {
-      this.logger.error("Failed to refresh Bling access token:", (error as any).response?.data || (error as any).message);
+    } catch (error) {
+      this.logger.error(`Failed to refresh Bling access token: ${this.describeAxiosError(error)}`);
       throw new Error("Failed to refresh Bling token.");
     }
   }
 
   async getProductsAndStock(): Promise<BlingProductSnapshot[]> {
-    try {
-      const config = await this.getBlingConfig();
-      const preferences = this.mergePreferences(
-        {},
-        config?.sync_preferences ?? undefined
-      );
-      if (!preferences.products.enabled) {
-        this.logger.info("Product synchronization is disabled via preferences.");
-        return [];
-      }
+    const config = await this.getBlingConfig();
+    const preferences = this.mergePreferences({}, config?.syncPreferences ?? undefined);
 
+    if (!preferences.products.enabled) {
+      this.logger.info("Product synchronization is disabled via preferences.");
+      return [];
+    }
+
+    try {
       const accessToken = await this.getAccessToken();
       const response = await axios.get(`${this.apiBaseUrl}/produtos`, {
-        headers: { "Authorization": `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
+
       const rawProducts = Array.isArray(response.data?.data) ? response.data.data : [];
-      const normalized = rawProducts.map((product: unknown) =>
+
+      const normalized = rawProducts.map((product: JsonValue) =>
         this.normalizeProductSnapshot(product, preferences)
       );
       this.logger.info(`Successfully fetched ${normalized.length} products from Bling.`);
       return normalized;
-    } catch (error: unknown) {
-      this.logger.error("Failed to fetch products from Bling:", (error as any).response?.data || (error as any).message);
+    } catch (error) {
+      this.logger.error(`Failed to fetch products from Bling: ${this.describeAxiosError(error)}`);
       return [];
     }
   }
@@ -291,10 +334,10 @@ class BlingService {
   getDefaultPreferences(): SyncPreferences {
     return this.mergePreferences();
   }
- 
+
   async syncProductsToMedusa(): Promise<ProductSyncResult> {
     const config = await this.getBlingConfig();
-    const preferences = this.mergePreferences({}, config?.sync_preferences ?? undefined);
+    const preferences = this.mergePreferences({}, config?.syncPreferences ?? undefined);
 
     if (!preferences.products.enabled) {
       return {
@@ -375,9 +418,7 @@ class BlingService {
       };
     }
 
-    const persisted = await this.productModuleService.upsertProducts(
-      upsertPayloads.map((payload) => payload.data)
-    );
+    await this.productModuleService.upsertProducts(upsertPayloads.map((payload) => payload.data));
 
     let created = 0;
     let updated = 0;
@@ -401,16 +442,14 @@ class BlingService {
       `Sincronização concluída: ${created} produtos criados, ${updated} atualizados, ${summary.total_products} processados.`
     );
 
-    if (warnings.length > 0) {
-      warnings.forEach((warning) => this.logger.warn(warning));
-    }
+    warnings.forEach((warning) => this.logger.warn(warning));
 
     return {
       summary,
       warnings,
     };
   }
- 
+
   private buildProductUpsert(
     snapshot: BlingProductSnapshot,
     existing?: ProductDTO
@@ -510,8 +549,8 @@ class BlingService {
   ): BlingProductVariantSnapshot[] {
     return [
       {
-        external_id: productSnapshot.external_id ?? null,
-        sku: productSnapshot.sku ?? productSnapshot.external_id ?? null,
+        external_id: productSnapshot.external_id,
+        sku: productSnapshot.sku ?? productSnapshot.external_id,
         barcode: null,
         price: productSnapshot.price ?? null,
         currency: productSnapshot.currency ?? null,
@@ -531,7 +570,7 @@ class BlingService {
     skipped: number
   ): ProductSyncSummary {
     const totalVariants = snapshots.reduce(
-      (acc, product) => acc + product.variants.length,
+      (accumulator, product) => accumulator + product.variants.length,
       0
     );
 
@@ -574,7 +613,8 @@ class BlingService {
       products: {
         enabled: incoming.products?.enabled ?? source.products.enabled,
         import_images: incoming.products?.import_images ?? source.products.import_images,
-        import_descriptions: incoming.products?.import_descriptions ?? source.products.import_descriptions,
+        import_descriptions:
+          incoming.products?.import_descriptions ?? source.products.import_descriptions,
         import_prices: incoming.products?.import_prices ?? source.products.import_prices,
       },
       inventory: {
@@ -594,182 +634,202 @@ class BlingService {
   }
 
   private normalizeProductSnapshot(
-    source: any,
+    source: JsonValue,
     preferences: SyncPreferences
   ): BlingProductSnapshot {
-    const productData = source?.produto ?? source ?? {};
-    const externalId: string =
-      (productData?.id?.toString?.() ??
-        productData?.codigo?.toString?.() ??
-        productData?.sku?.toString?.() ??
-        productData?.idProduto?.toString?.() ??
-        "") || "";
+    const productWrapper = this.toJsonObject(source);
+    const productData = this.toJsonObject(
+      this.isJsonObject(productWrapper.produto) ? productWrapper.produto : productWrapper
+    );
 
-    const shouldIncludeDescription = preferences.products.import_descriptions;
-    const shouldIncludePrice = preferences.products.import_prices;
-    const shouldIncludeImages = preferences.products.import_images;
-    const shouldIncludeInventory = preferences.inventory.enabled;
+    const externalId =
+      this.toOptionalString(productData.id) ??
+      this.toOptionalString(productData.codigo) ??
+      this.toOptionalString(productData.sku) ??
+      this.toOptionalString(productData.idProduto) ??
+      "";
 
-    const images = shouldIncludeImages
-      ? this.extractImageUrls(productData)
-      : [];
+    const includeDescription = preferences.products.import_descriptions;
+    const includePrice = preferences.products.import_prices;
+    const includeImages = preferences.products.import_images;
+    const includeInventory = preferences.inventory.enabled;
 
-    const stockSnapshots = shouldIncludeInventory
-      ? this.extractStockSnapshots(productData)
-      : [];
-
+    const images = includeImages ? this.extractImageUrls(productData) : [];
+    const stockSnapshots = includeInventory ? this.extractStockSnapshots(productData) : [];
     const variantsSnapshots = this.extractVariantSnapshots(
       productData,
       preferences,
-      shouldIncludeInventory
+      includeInventory
     );
 
     const snapshot: BlingProductSnapshot = {
       external_id: externalId,
-      name: productData?.nome ?? productData?.descricao ?? "Produto sem nome",
+      name:
+        this.toOptionalString(productData.nome) ??
+        this.toOptionalString(productData.descricao) ??
+        "Produto sem nome",
       images,
       stock: stockSnapshots,
       variants: variantsSnapshots,
-      raw: source,
+      raw: productData,
     };
 
-    if (shouldIncludeDescription && typeof productData?.descricao === "string") {
-      snapshot.description = productData.descricao;
+    if (includeDescription) {
+      const description = this.toOptionalString(productData.descricao);
+      if (description) {
+        snapshot.description = description;
+      }
     }
 
-    if (shouldIncludePrice) {
-      snapshot.price = this.parseNumber(productData?.preco);
-      snapshot.currency = productData?.moeda ?? "BRL";
+    if (includePrice) {
+      snapshot.price = this.parseNumber(productData.preco);
+      snapshot.currency = this.toOptionalString(productData.moeda) ?? "BRL";
     }
 
     const sku =
-      productData?.codigo ??
-      productData?.sku ??
-      productData?.referencia ??
-      null;
+      this.toOptionalString(productData.codigo) ??
+      this.toOptionalString(productData.sku) ??
+      this.toOptionalString(productData.referencia);
     if (sku) {
-      snapshot.sku = String(sku);
+      snapshot.sku = sku;
     }
 
     return snapshot;
   }
 
   private extractVariantSnapshots(
-    productData: any,
+    productData: JsonObject,
     preferences: SyncPreferences,
     includeInventory: boolean
   ): BlingProductVariantSnapshot[] {
-    const variantsRaw = productData?.variacoes ?? productData?.variantes ?? [];
-    if (!Array.isArray(variantsRaw) || variantsRaw.length === 0) {
+    const rawVariants = this.toJsonArray(productData.variacoes ?? productData.variantes);
+    if (rawVariants.length === 0) {
       return [];
     }
 
-    return variantsRaw.map((variant: any) => {
-      const variantData = variant?.variacao ?? variant ?? {};
-      const variantStock = includeInventory
-        ? this.extractStockSnapshots(variantData)
-        : [];
+    return rawVariants.map((variant) => {
+      const variantRoot = this.toJsonObject(variant);
+      const variantData = this.toJsonObject(
+        this.isJsonObject(variantRoot.variacao) ? variantRoot.variacao : variantRoot
+      );
+      const variantStock = includeInventory ? this.extractStockSnapshots(variantData) : [];
 
       return {
-        external_id: variantData?.id?.toString?.() ?? null,
-        sku: variantData?.sku ?? variantData?.codigo ?? null,
-        barcode: variantData?.gtin ?? variantData?.ean ?? null,
+        external_id: this.toOptionalString(variantData.id),
+        sku: this.toOptionalString(variantData.sku) ?? this.toOptionalString(variantData.codigo),
+        barcode: this.toOptionalString(variantData.gtin) ?? this.toOptionalString(variantData.ean),
         price: preferences.products.import_prices
-          ? this.parseNumber(variantData?.preco ?? variantData?.precoVenda)
+          ? this.parseNumber(variantData.preco ?? variantData.precoVenda)
           : null,
         currency: preferences.products.import_prices
-          ? variantData?.moeda ?? "BRL"
+          ? (this.toOptionalString(variantData.moeda) ?? "BRL")
           : null,
-        weight_kg: this.parseNumber(variantData?.pesoLiquido ?? variantData?.pesoBruto),
-        depth_cm: this.parseNumber(variantData?.comprimento),
-        height_cm: this.parseNumber(variantData?.altura),
-        width_cm: this.parseNumber(variantData?.largura),
+        weight_kg: this.parseNumber(variantData.pesoLiquido ?? variantData.pesoBruto),
+        depth_cm: this.parseNumber(variantData.comprimento),
+        height_cm: this.parseNumber(variantData.altura),
+        width_cm: this.parseNumber(variantData.largura),
         stock: variantStock,
       };
     });
   }
 
-  private extractImageUrls(productData: any): string[] {
-    const imagesRaw = productData?.imagens ?? productData?.imagem ?? [];
+  private extractImageUrls(productData: JsonObject): string[] {
+    const imagesRaw = productData.imagens ?? productData.imagem;
     if (Array.isArray(imagesRaw)) {
       return imagesRaw
         .map((image) => {
           if (typeof image === "string") {
             return image;
           }
-          const url = image?.link ?? image?.url ?? image?.path ?? null;
-          return typeof url === "string" ? url : null;
+          const imageObject = this.toJsonObject(image);
+          const url =
+            this.toOptionalString(imageObject.link) ??
+            this.toOptionalString(imageObject.url) ??
+            this.toOptionalString(imageObject.path);
+          return url;
         })
         .filter((url): url is string => Boolean(url));
     }
+
     if (typeof imagesRaw === "string") {
       return [imagesRaw];
     }
-    if (imagesRaw && typeof imagesRaw === "object") {
-      const single = imagesRaw?.link ?? imagesRaw?.url ?? null;
+
+    if (this.isJsonObject(imagesRaw)) {
+      const single = this.toOptionalString(imagesRaw.link) ?? this.toOptionalString(imagesRaw.url);
       return single ? [single] : [];
     }
+
     return [];
   }
 
-  private extractStockSnapshots(data: any): BlingProductStockSnapshot[] {
-    const stockEntries = data?.estoques ?? data?.depositos ?? data?.saldo ?? [];
-    if (!Array.isArray(stockEntries)) {
-      const normalized = this.normalizeStockEntry(stockEntries);
-      return normalized ? [normalized] : [];
+  private extractStockSnapshots(data: JsonObject): BlingProductStockSnapshot[] {
+    const rawEntries = data.estoques ?? data.depositos ?? data.saldo ?? null;
+
+    if (!Array.isArray(rawEntries)) {
+      const single = this.normalizeStockEntry(rawEntries);
+      return single ? [single] : [];
     }
-    return stockEntries
+
+    return rawEntries
       .map((entry) => this.normalizeStockEntry(entry))
-      .filter((entry): entry is BlingProductStockSnapshot => Boolean(entry));
+      .filter((entry): entry is BlingProductStockSnapshot => entry !== null);
   }
 
-  private normalizeStockEntry(entry: any): BlingProductStockSnapshot | null {
-    if (!entry) {
+  private normalizeStockEntry(value: JsonValue | undefined): BlingProductStockSnapshot | null {
+    if (value === null || value === undefined) {
       return null;
     }
 
-    if (typeof entry === "number") {
+    if (typeof value === "number" || typeof value === "string") {
       return {
         warehouse_id: null,
-        quantity: this.parseNumber(entry),
+        quantity: this.parseNumber(value),
       };
     }
 
-    if (typeof entry === "object") {
-      const warehouseId =
-        entry?.idDeposito ??
-        entry?.id_deposito ??
-        entry?.deposito_id ??
-        entry?.deposito?.id ??
-        null;
-
-      const quantity =
-        entry?.saldo ??
-        entry?.quantidade ??
-        entry?.estoque ??
-        entry?.disponivel ??
-        entry?.saldoAtual ??
-        entry?.saldoVirtual ??
-        null;
-
-      return {
-        warehouse_id: warehouseId ? warehouseId.toString() : null,
-        quantity: this.parseNumber(quantity),
-      };
+    if (Array.isArray(value)) {
+      return null;
     }
 
-    return null;
+    const entry = this.toJsonObject(value);
+    const warehouseId =
+      this.toOptionalString(entry.idDeposito) ??
+      this.toOptionalString(entry.id_deposito) ??
+      this.toOptionalString(entry.deposito_id) ??
+      this.toOptionalString(this.toJsonObject(entry.deposito).id) ??
+      null;
+
+    const quantity =
+      this.parseNumber(entry.saldo) ??
+      this.parseNumber(entry.quantidade) ??
+      this.parseNumber(entry.estoque) ??
+      this.parseNumber(entry.disponivel) ??
+      this.parseNumber(entry.saldoAtual) ??
+      this.parseNumber(entry.saldoVirtual) ??
+      null;
+
+    if (warehouseId === null && quantity === null) {
+      return null;
+    }
+
+    return {
+      warehouse_id: warehouseId,
+      quantity,
+    };
   }
 
-  private parseNumber(value: unknown): number | null {
-    if (typeof value === "number" && !Number.isNaN(value)) {
-      return value;
+  private parseNumber(value: JsonValue | undefined): number | null {
+    if (typeof value === "number") {
+      return Number.isNaN(value) ? null : value;
     }
+
     if (typeof value === "string") {
       const normalized = value.replace(/\./g, "").replace(",", ".");
       const parsed = Number.parseFloat(normalized);
       return Number.isNaN(parsed) ? null : parsed;
     }
+
     return null;
   }
 
@@ -783,9 +843,59 @@ class BlingService {
       },
     });
   }
+
+  private toJsonObject(value: JsonValue | undefined): JsonObject {
+    if (this.isJsonObject(value)) {
+      return value;
+    }
+    return {};
+  }
+
+  private toJsonArray(value: JsonValue | undefined): JsonValue[] {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (value === undefined || value === null) {
+      return [];
+    }
+    return [value];
+  }
+
+  private isJsonObject(value: JsonValue | undefined): value is JsonObject {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+  }
+
+  private toOptionalString(value: JsonValue | undefined): string | null {
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "number") {
+      return value.toString();
+    }
+    return null;
+  }
+
+  private describeAxiosError(error: unknown): string {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.data) {
+        if (typeof axiosError.response.data === "string") {
+          return axiosError.response.data;
+        }
+        return JSON.stringify(axiosError.response.data);
+      }
+      return axiosError.message;
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
+  }
 }
 
-export default BlingService;
+export default BlingModuleService;
 
 export interface ProductSyncSummary {
   total_products: number;

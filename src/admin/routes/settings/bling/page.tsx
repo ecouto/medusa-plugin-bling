@@ -9,92 +9,41 @@ import {
   Text,
   toast,
   Select,
-} from "@medusajs/ui"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Controller, useFieldArray, useForm } from "react-hook-form"
-import { useSearchParams } from "react-router-dom"
-
-type SyncPreferencesForm = {
-  products: {
-    enabled: boolean
-    import_images: boolean
-    import_descriptions: boolean
-    import_prices: boolean
-  }
-  inventory: {
-    enabled: boolean
-    bidirectional: boolean
-    locations: InventoryLocationMappingForm[]
-  }
-  orders: {
-    enabled: boolean
-    send_to_bling: boolean
-    receive_from_bling: boolean
-    generate_nf: boolean
-  }
-}
+} from "@medusajs/ui";
+import { defineRouteConfig } from "@medusajs/admin-sdk";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { useSearchParams } from "react-router-dom";
+import {
+  ApiError,
+  blingApi,
+  type OrderSyncResultResponse,
+  type StockLocationOption,
+  type InventoryLocationMappingForm,
+  type SyncPreferencesForm,
+  type ProductSyncSummary,
+  type UpdateBlingConfigRequest,
+} from "../../../api/bling";
 
 type BlingConfigForm = {
-  client_id: string
-  client_secret: string
-  webhook_secret: string
-  sync_preferences: SyncPreferencesForm
-}
+  client_id: string;
+  client_secret: string;
+  webhook_secret: string;
+  sync_preferences: SyncPreferencesForm;
+};
 
-type BlingConfigResponse = {
-  client_id: string
-  client_secret: string
-  webhook_secret: string
-  is_connected: boolean
-  sync_preferences: SyncPreferencesForm
-}
+type HealthStatus = "ok" | "not_connected" | "error" | null;
 
-type UpdateBlingConfigRequest = {
-  client_id: string
-  client_secret: string
-  webhook_secret: string
-  sync_preferences: SyncPreferencesForm
-}
+export const config = defineRouteConfig({
+  label: "Bling ERP",
+});
 
-type HealthStatus = "ok" | "not_connected" | "error" | null
-
-type SyncSummary = {
-  total_products: number
-  total_variants: number
-  products_with_inventory_data: number
-  created: number
-  updated: number
-  skipped: number
-  preview: Array<{
-    external_id: string
-    name: string
-    variants: number
-    stock_entries: number
-  }>
-}
-
-type InventoryLocationMappingForm = {
-  stock_location_id: string
-  bling_deposit_id: string
-  is_default?: boolean
-}
-
-type StockLocationOption = {
-  id: string
-  name: string
-}
-
-
-type OrderSyncResultResponse = {
-  summary: {
-    total_items: number
-    total_amount: number
-    freight_amount: number
-    bling_sale_id: string | null
-    synced_at: string
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof ApiError || error instanceof Error) {
+    return error.message;
   }
-  warnings: string[]
-}
+  return fallback;
+};
 
 const BlingSettingsPage = () => {
   const defaultPreferences = useMemo<SyncPreferencesForm>(
@@ -118,7 +67,7 @@ const BlingSettingsPage = () => {
       },
     }),
     []
-  )
+  );
 
   const {
     register,
@@ -136,22 +85,22 @@ const BlingSettingsPage = () => {
       webhook_secret: "",
       sync_preferences: defaultPreferences,
     },
-  })
-  const [searchParams, setSearchParams] = useSearchParams()
+  });
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [isConfigLoading, setIsConfigLoading] = useState<boolean>(true)
-  const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false)
-  const [isSyncing, setIsSyncing] = useState<boolean>(false)
-  const [isHealthLoading, setIsHealthLoading] = useState<boolean>(true)
-  const [healthStatus, setHealthStatus] = useState<HealthStatus>(null)
-  const [healthMessage, setHealthMessage] = useState<string | null>(null)
-  const [syncSummary, setSyncSummary] = useState<SyncSummary | null>(null)
-  const [availableStockLocations, setAvailableStockLocations] = useState<StockLocationOption[]>([])
-  const [syncWarnings, setSyncWarnings] = useState<string[]>([])
-  const [orderSyncId, setOrderSyncId] = useState<string>("")
-  const [isOrderSyncing, setIsOrderSyncing] = useState<boolean>(false)
-  const [orderSyncResult, setOrderSyncResult] = useState<OrderSyncResultResponse | null>(null)
-  const [orderSyncWarnings, setOrderSyncWarnings] = useState<string[]>([])
+  const [isConfigLoading, setIsConfigLoading] = useState<boolean>(true);
+  const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isHealthLoading, setIsHealthLoading] = useState<boolean>(true);
+  const [healthStatus, setHealthStatus] = useState<HealthStatus>(null);
+  const [healthMessage, setHealthMessage] = useState<string | null>(null);
+  const [syncSummary, setSyncSummary] = useState<ProductSyncSummary | null>(null);
+  const [availableStockLocations, setAvailableStockLocations] = useState<StockLocationOption[]>([]);
+  const [syncWarnings, setSyncWarnings] = useState<string[]>([]);
+  const [orderSyncId, setOrderSyncId] = useState<string>("");
+  const [isOrderSyncing, setIsOrderSyncing] = useState<boolean>(false);
+  const [orderSyncResult, setOrderSyncResult] = useState<OrderSyncResultResponse | null>(null);
+  const [orderSyncWarnings, setOrderSyncWarnings] = useState<string[]>([]);
   const {
     fields: locationFields,
     append: appendLocation,
@@ -160,63 +109,53 @@ const BlingSettingsPage = () => {
   } = useFieldArray({
     control,
     name: "sync_preferences.inventory.locations",
-  })
+  });
 
-  const clientId = watch("client_id")
-  const clientSecret = watch("client_secret")
+  const clientId = watch("client_id");
+  const clientSecret = watch("client_secret");
 
-  const productSyncEnabled = watch("sync_preferences.products.enabled")
-  const inventorySyncEnabled = watch("sync_preferences.inventory.enabled")
-  const orderSyncEnabled = watch("sync_preferences.orders.enabled")
+  const productSyncEnabled = watch("sync_preferences.products.enabled");
+  const inventorySyncEnabled = watch("sync_preferences.inventory.enabled");
+  const orderSyncEnabled = watch("sync_preferences.orders.enabled");
 
   const fetchConfig = useCallback(async () => {
-    setIsConfigLoading(true)
+    setIsConfigLoading(true);
     try {
-      const [configResponse, locationsResponse] = await Promise.all([
-        fetch("/admin/bling/config", {
-          credentials: "include",
+      const [configPayload, locationsPayload] = await Promise.all([
+        blingApi.getConfig(),
+        blingApi.getInventoryLocations().catch((error) => {
+          const message = getErrorMessage(
+            error,
+            "Falha desconhecida ao carregar locais de estoque."
+          );
+          console.warn(
+            `[bling] Não foi possível carregar os locais de estoque do Medusa: ${message}`
+          );
+          return {
+            locations: [],
+            mappings: [],
+          };
         }),
-        fetch("/admin/bling/inventory/locations", {
-          credentials: "include",
-        }),
-      ])
+      ]);
 
-      if (!configResponse.ok) {
-        throw new Error(`Falha ao buscar configurações (${configResponse.status})`)
-      }
+      setAvailableStockLocations(locationsPayload.locations);
 
-      const configPayload = (await configResponse.json()) as BlingConfigResponse
+      const incomingPreferences = configPayload.sync_preferences ?? defaultPreferences;
+      const locationMappings: InventoryLocationMappingForm[] = (
+        locationsPayload.mappings.length > 0
+          ? locationsPayload.mappings
+          : (incomingPreferences.inventory.locations ?? [])
+      ).map((location) => ({ ...location }));
 
-      let locationsPayload: {
-        locations: StockLocationOption[]
-        mappings: InventoryLocationMappingForm[]
-      } = {
-        locations: [],
-        mappings: [],
-      }
-
-      if (locationsResponse.ok) {
-        const data = await locationsResponse.json()
-        locationsPayload = {
-          locations: Array.isArray(data?.locations) ? data.locations : [],
-          mappings: Array.isArray(data?.mappings) ? data.mappings : [],
-        }
-      }
-
-      setAvailableStockLocations(locationsPayload.locations)
-
-      const incomingPreferences = configPayload.sync_preferences ?? defaultPreferences
-      const locationMappings: InventoryLocationMappingForm[] = (locationsPayload.mappings.length > 0
-        ? locationsPayload.mappings
-        : incomingPreferences.inventory.locations ?? []
-      ).map((location) => ({ ...location }))
-
-      if (locationMappings.length > 0 && !locationMappings.some((location) => location.is_default)) {
-        const firstMapping = locationMappings[0]!
+      if (
+        locationMappings.length > 0 &&
+        !locationMappings.some((location) => location.is_default)
+      ) {
+        const firstMapping = locationMappings[0]!;
         locationMappings[0] = {
           ...firstMapping,
           is_default: true,
-        }
+        };
       }
 
       reset({
@@ -231,129 +170,118 @@ const BlingSettingsPage = () => {
           },
           orders: incomingPreferences.orders,
         },
-      })
+      });
 
-      replaceLocationMappings(locationMappings)
+      replaceLocationMappings(locationMappings);
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Não foi possível carregar as configurações do Bling."
-      toast.error("Erro ao carregar configurações", { description: message })
+      const message = getErrorMessage(
+        error,
+        "Não foi possível carregar as configurações do Bling."
+      );
+      toast.error("Erro ao carregar configurações", { description: message });
     } finally {
-      setIsConfigLoading(false)
+      setIsConfigLoading(false);
     }
-  }, [defaultPreferences, replaceLocationMappings, reset])
+  }, [defaultPreferences, replaceLocationMappings, reset]);
 
   const fetchHealth = useCallback(async () => {
-    setIsHealthLoading(true)
+    setIsHealthLoading(true);
     try {
-      const response = await fetch("/admin/bling/health", {
-        credentials: "include",
-      })
-      if (!response.ok) {
-        throw new Error(`Falha ao verificar status (${response.status})`)
-      }
-      const payload = (await response.json()) as { status: string; message?: string }
-      setHealthStatus((payload.status as HealthStatus) ?? null)
-      setHealthMessage(payload.message ?? null)
+      const payload = await blingApi.getHealth();
+      setHealthStatus((payload.status as HealthStatus) ?? null);
+      setHealthMessage(payload.message ?? null);
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Não foi possível verificar o status da conexão."
-      setHealthStatus("error")
-      setHealthMessage(message)
-      toast.error("Erro ao verificar conexão", { description: message })
+      const message = getErrorMessage(error, "Não foi possível verificar o status da conexão.");
+      setHealthStatus("error");
+      setHealthMessage(message);
+      toast.error("Erro ao verificar conexão", { description: message });
     } finally {
-      setIsHealthLoading(false)
+      setIsHealthLoading(false);
     }
-  }, [])
+  }, []);
 
   const handleAddLocationMapping = useCallback(() => {
-    const existing = getValues("sync_preferences.inventory.locations") ?? []
+    const existing = getValues("sync_preferences.inventory.locations") ?? [];
     const usedLocations = new Set(
       existing
         .map((mapping) => mapping?.stock_location_id)
         .filter((value): value is string => typeof value === "string" && value.length > 0)
-    )
+    );
     const nextAvailableLocation = availableStockLocations.find(
       (location) => !usedLocations.has(location.id)
-    )
-    const hasDefault = existing.some((mapping) => mapping?.is_default)
+    );
+    const hasDefault = existing.some((mapping) => mapping?.is_default);
 
     appendLocation({
       stock_location_id: nextAvailableLocation?.id ?? "",
       bling_deposit_id: "",
       is_default: hasDefault ? false : true,
-    })
-  }, [appendLocation, availableStockLocations, getValues])
+    });
+  }, [appendLocation, availableStockLocations, getValues]);
 
   const handleRemoveLocation = useCallback(
     (index: number) => {
-      const currentMappings = getValues("sync_preferences.inventory.locations") ?? []
-      const wasDefault = Boolean(currentMappings[index]?.is_default)
+      const currentMappings = getValues("sync_preferences.inventory.locations") ?? [];
+      const wasDefault = Boolean(currentMappings[index]?.is_default);
 
-      removeLocation(index)
+      removeLocation(index);
 
       if (wasDefault) {
         setTimeout(() => {
-          const remaining = getValues("sync_preferences.inventory.locations") ?? []
+          const remaining = getValues("sync_preferences.inventory.locations") ?? [];
           remaining.forEach((_, idx) => {
-            setValue(
-              `sync_preferences.inventory.locations.${idx}.is_default`,
-              idx === 0,
-              { shouldDirty: true }
-            )
-          })
-        }, 0)
+            setValue(`sync_preferences.inventory.locations.${idx}.is_default`, idx === 0, {
+              shouldDirty: true,
+            });
+          });
+        }, 0);
       }
     },
     [getValues, removeLocation, setValue]
-  )
+  );
 
   const handleSetDefaultLocation = useCallback(
     (index: number, checked: boolean) => {
-      const mappings = getValues("sync_preferences.inventory.locations") ?? []
+      const mappings = getValues("sync_preferences.inventory.locations") ?? [];
       if (mappings.length === 0) {
-        return
+        return;
       }
 
       if (checked) {
         mappings.forEach((_, idx) => {
-          setValue(
-            `sync_preferences.inventory.locations.${idx}.is_default`,
-            idx === index,
-            { shouldDirty: true }
-          )
-        })
+          setValue(`sync_preferences.inventory.locations.${idx}.is_default`, idx === index, {
+            shouldDirty: true,
+          });
+        });
       } else {
-        setValue(
-          `sync_preferences.inventory.locations.${index}.is_default`,
-          false,
-          { shouldDirty: true }
-        )
+        setValue(`sync_preferences.inventory.locations.${index}.is_default`, false, {
+          shouldDirty: true,
+        });
       }
     },
     [getValues, setValue]
-  )
+  );
 
   useEffect(() => {
-    void fetchConfig()
-    void fetchHealth()
-  }, [fetchConfig, fetchHealth])
+    void fetchConfig();
+    void fetchHealth();
+  }, [fetchConfig, fetchHealth]);
 
   useEffect(() => {
     if (searchParams.get("auth_success")) {
-      toast.success("Bling conectado com sucesso!")
-      void fetchHealth()
-      searchParams.delete("auth_success")
-      setSearchParams(searchParams)
+      toast.success("Bling conectado com sucesso!");
+      void fetchHealth();
+      searchParams.delete("auth_success");
+      setSearchParams(searchParams);
     }
     if (searchParams.get("auth_error")) {
-      const errorMessage = searchParams.get("message") || "Falha ao conectar com o Bling."
-      toast.error("Erro ao conectar com o Bling", { description: errorMessage })
-      searchParams.delete("auth_error")
-      searchParams.delete("message")
-      setSearchParams(searchParams)
+      const errorMessage = searchParams.get("message") || "Falha ao conectar com o Bling.";
+      toast.error("Erro ao conectar com o Bling", { description: errorMessage });
+      searchParams.delete("auth_error");
+      searchParams.delete("message");
+      setSearchParams(searchParams);
     }
-  }, [fetchHealth, searchParams, setSearchParams])
+  }, [fetchHealth, searchParams, setSearchParams]);
 
   const handleSaveConfig = useCallback(
     async (formData: BlingConfigForm) => {
@@ -362,137 +290,93 @@ const BlingSettingsPage = () => {
         client_secret: formData.client_secret,
         webhook_secret: formData.webhook_secret,
         sync_preferences: formData.sync_preferences,
-      }
-      setIsSavingConfig(true)
+      };
+      setIsSavingConfig(true);
       try {
-        const response = await fetch("/admin/bling/config", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        })
-        if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as { message?: string }
-          throw new Error(body.message ?? `Falha ao salvar configurações (${response.status})`)
-        }
-        toast.success("Configurações salvas com sucesso.")
-        await fetchConfig()
+        await blingApi.saveConfig(payload);
+        toast.success("Configurações salvas com sucesso.");
+        await fetchConfig();
       } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : "Não foi possível salvar as configurações do Bling."
-        toast.error("Erro ao salvar configurações", { description: message })
+        const message = getErrorMessage(
+          error,
+          "Não foi possível salvar as configurações do Bling."
+        );
+        toast.error("Erro ao salvar configurações", { description: message });
       } finally {
-        setIsSavingConfig(false)
+        setIsSavingConfig(false);
       }
     },
     [fetchConfig]
-  )
+  );
 
   const handleConnectBling = () => {
-    window.location.href = "/admin/bling/authorize"
-  }
+    window.location.href = "/admin/bling/authorize";
+  };
 
   const handleOrderSync = useCallback(async () => {
     if (!orderSyncId) {
-      toast.warning("Informe o ID do pedido do Medusa para sincronizar.")
-      return
+      toast.warning("Informe o ID do pedido do Medusa para sincronizar.");
+      return;
     }
 
-    setIsOrderSyncing(true)
-    setOrderSyncWarnings([])
+    setIsOrderSyncing(true);
+    setOrderSyncWarnings([]);
 
     try {
-      const response = await fetch(`/admin/bling/orders/${orderSyncId}/sync`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          generateNfe: watch("sync_preferences.orders.generate_nf"),
-        }),
-      })
+      const payload = await blingApi.syncOrder(orderSyncId, {
+        generateNfe: watch("sync_preferences.orders.generate_nf"),
+      });
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { message?: string }
-        throw new Error(body.message ?? `Falha ao sincronizar pedido (${response.status})`)
-      }
-
-      const payload = (await response.json()) as {
-        message: string
-        result: OrderSyncResultResponse
-      }
-
-      setOrderSyncResult(payload.result)
-      setOrderSyncWarnings(payload.result.warnings ?? [])
+      setOrderSyncResult(payload.result);
+      setOrderSyncWarnings(payload.result.warnings ?? []);
       toast.success(payload.message, {
         description: payload.result.summary.bling_sale_id
           ? `Venda registrada no Bling sob ID ${payload.result.summary.bling_sale_id}.`
           : undefined,
-      })
+      });
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Não foi possível sincronizar o pedido com o Bling."
-      toast.error("Erro ao sincronizar pedido", { description: message })
-      setOrderSyncResult(null)
-      setOrderSyncWarnings([])
+      const message = getErrorMessage(error, "Não foi possível sincronizar o pedido com o Bling.");
+      toast.error("Erro ao sincronizar pedido", { description: message });
+      setOrderSyncResult(null);
+      setOrderSyncWarnings([]);
     } finally {
-      setIsOrderSyncing(false)
+      setIsOrderSyncing(false);
     }
-  }, [orderSyncId, toast, watch])
+  }, [orderSyncId, toast, watch]);
 
   const handleManualSync = useCallback(async () => {
-    setIsSyncing(true)
-    setSyncWarnings([])
+    setIsSyncing(true);
+    setSyncWarnings([]);
     try {
-      const response = await fetch("/admin/bling/sync", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({}),
-      })
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { message?: string }
-        throw new Error(body.message ?? `Falha ao iniciar a sincronização (${response.status})`)
-      }
-      const payload = (await response.json()) as {
-        message: string
-        summary: SyncSummary
-        warnings?: string[]
-      }
-      setSyncSummary(payload.summary)
-      setSyncWarnings(payload.warnings ?? [])
+      const payload = await blingApi.syncProducts();
+      setSyncSummary(payload.summary);
+      setSyncWarnings(payload.warnings ?? []);
 
       toast.success(payload.message, {
         description: `Produtos processados: ${payload.summary.total_products}. Criados: ${payload.summary.created}. Atualizados: ${payload.summary.updated}.`,
-      })
+      });
 
       if (payload.warnings && payload.warnings.length > 0) {
         payload.warnings.forEach((warning) => {
-          toast.warning("Aviso durante sincronização", { description: warning })
-        })
+          toast.warning("Aviso durante sincronização", { description: warning });
+        });
       }
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Não foi possível iniciar a sincronização manual."
-      toast.error("Erro ao sincronizar", { description: message })
-      setSyncSummary(null)
-      setSyncWarnings([])
+      const message = getErrorMessage(error, "Não foi possível iniciar a sincronização manual.");
+      toast.error("Erro ao sincronizar", { description: message });
+      setSyncSummary(null);
+      setSyncWarnings([]);
     } finally {
-      setIsSyncing(false)
+      setIsSyncing(false);
     }
-  }, [])
+  }, []);
 
   const renderProductSyncSummary = () => {
     if (!syncSummary) {
-      return null
+      return null;
     }
 
-    const summary = syncSummary
+    const summary = syncSummary;
 
     return (
       <div className="flex flex-col gap-y-4 rounded-lg border border-gray-200 p-4">
@@ -552,12 +436,12 @@ const BlingSettingsPage = () => {
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
-  const isConnected = healthStatus === "ok"
-  const canConnect = Boolean(clientId && clientSecret && !isConfigLoading && !isSavingConfig)
-  const canSync = Boolean(isConnected && !isSyncing)
+  const isConnected = healthStatus === "ok";
+  const canConnect = Boolean(clientId && clientSecret && !isConfigLoading && !isSavingConfig);
+  const canSync = Boolean(isConnected && !isSyncing);
 
   return (
     <div className="flex flex-col gap-y-6">
@@ -566,8 +450,8 @@ const BlingSettingsPage = () => {
           <div>
             <Heading level="h1">Configurações do Bling ERP</Heading>
             <Text className="text-ui-fg-subtle">
-              Armazene suas credenciais de acesso e personalize quais dados serão sincronizados entre o Bling e o
-              Medusa.
+              Armazene suas credenciais de acesso e personalize quais dados serão sincronizados
+              entre o Bling e o Medusa.
             </Text>
           </div>
 
@@ -575,7 +459,8 @@ const BlingSettingsPage = () => {
             <section className="flex flex-col gap-y-4">
               <Heading level="h2">Credenciais de Autenticação</Heading>
               <Text className="text-ui-fg-subtle">
-                Informe as credenciais obtidas no portal do desenvolvedor do Bling para habilitar o fluxo de OAuth.
+                Informe as credenciais obtidas no portal do desenvolvedor do Bling para habilitar o
+                fluxo de OAuth.
               </Text>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-y-2">
@@ -607,7 +492,8 @@ const BlingSettingsPage = () => {
                     disabled={isConfigLoading || isSavingConfig || isSubmitting}
                   />
                   <Text className="text-xs text-ui-fg-subtle">
-                    Defina o mesmo segredo na configuração de webhooks do Bling para validar notificações recebidas.
+                    Defina o mesmo segredo na configuração de webhooks do Bling para validar
+                    notificações recebidas.
                   </Text>
                 </div>
               </div>
@@ -629,9 +515,13 @@ const BlingSettingsPage = () => {
                 <div className="flex flex-col gap-y-2 lg:flex-row lg:items-center lg:gap-x-4">
                   <div className="flex items-center gap-x-3">
                     <Text className="font-semibold">Status da Conexão</Text>
-                    {(isConfigLoading || isHealthLoading) && <Badge color="grey">Verificando...</Badge>}
+                    {(isConfigLoading || isHealthLoading) && (
+                      <Badge color="grey">Verificando...</Badge>
+                    )}
                     {isConnected && <Badge color="green">Conectado</Badge>}
-                    {!isConnected && !(isConfigLoading || isHealthLoading) && <Badge color="red">Desconectado</Badge>}
+                    {!isConnected && !(isConfigLoading || isHealthLoading) && (
+                      <Badge color="red">Desconectado</Badge>
+                    )}
                   </div>
                   {healthStatus === "error" && healthMessage && (
                     <Text className="text-ui-fg-error text-sm">{healthMessage}</Text>
@@ -651,8 +541,8 @@ const BlingSettingsPage = () => {
           <section className="flex flex-col gap-y-4">
             <Heading level="h2">Preferências de Sincronização</Heading>
             <Text className="text-ui-fg-subtle">
-              Ative ou desative as sincronizações de acordo com o seu fluxo. As alterações são aplicadas nas próximas
-              execuções.
+              Ative ou desative as sincronizações de acordo com o seu fluxo. As alterações são
+              aplicadas nas próximas execuções.
             </Text>
 
             <div className="flex flex-col gap-y-6">
@@ -661,14 +551,19 @@ const BlingSettingsPage = () => {
                   <div className="flex flex-col">
                     <Text className="font-semibold">Produtos</Text>
                     <Text className="text-ui-fg-subtle">
-                      Sincroniza catálogo, variantes e atributos obrigatórios do Bling para o Medusa.
+                      Sincroniza catálogo, variantes e atributos obrigatórios do Bling para o
+                      Medusa.
                     </Text>
                   </div>
                   <Controller
                     name="sync_preferences.products.enabled"
                     control={control}
                     render={({ field }) => (
-                      <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSavingConfig} />
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isSavingConfig}
+                      />
                     )}
                   />
                 </div>
@@ -728,7 +623,11 @@ const BlingSettingsPage = () => {
                     name="sync_preferences.inventory.enabled"
                     control={control}
                     render={({ field }) => (
-                      <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSavingConfig} />
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isSavingConfig}
+                      />
                     )}
                   />
                 </div>
@@ -754,7 +653,8 @@ const BlingSettingsPage = () => {
                     <Text className="font-semibold">Depósitos do Bling</Text>
                     <Text className="text-ui-fg-subtle">
                       Associe os locais de estoque do Medusa aos depósitos configurados no Bling.
-                      Utilize o ID do depósito disponível no painel do Bling (Menu &gt; Cadastros &gt; Depósitos).
+                      Utilize o ID do depósito disponível no painel do Bling (Menu &gt; Cadastros
+                      &gt; Depósitos).
                     </Text>
                   </div>
                   <Button
@@ -769,13 +669,15 @@ const BlingSettingsPage = () => {
 
                 {availableStockLocations.length === 0 && (
                   <Text className="text-sm text-ui-fg-subtle">
-                    Nenhum local de estoque encontrado no Medusa. Cadastre um local para habilitar a sincronização de inventário.
+                    Nenhum local de estoque encontrado no Medusa. Cadastre um local para habilitar a
+                    sincronização de inventário.
                   </Text>
                 )}
 
                 {availableStockLocations.length > 0 && locationFields.length === 0 && (
                   <Text className="text-sm text-ui-fg-subtle">
-                    Nenhum mapeamento configurado. Adicione um novo para sincronizar estoque com o Bling.
+                    Nenhum mapeamento configurado. Adicione um novo para sincronizar estoque com o
+                    Bling.
                   </Text>
                 )}
 
@@ -783,7 +685,7 @@ const BlingSettingsPage = () => {
                   <div className="flex flex-col gap-y-3">
                     {locationFields.map((field, index) => {
                       const isDefault =
-                        watch(`sync_preferences.inventory.locations.${index}.is_default`) ?? false
+                        watch(`sync_preferences.inventory.locations.${index}.is_default`) ?? false;
 
                       return (
                         <div
@@ -816,12 +718,16 @@ const BlingSettingsPage = () => {
                           </div>
 
                           <div className="flex flex-col gap-y-2">
-                            <Label htmlFor={`bling_deposit_${field.id}`}>ID do depósito no Bling</Label>
+                            <Label htmlFor={`bling_deposit_${field.id}`}>
+                              ID do depósito no Bling
+                            </Label>
                             <Input
                               id={`bling_deposit_${field.id}`}
                               placeholder="Ex.: 12345"
                               disabled={isSavingConfig}
-                              {...register(`sync_preferences.inventory.locations.${index}.bling_deposit_id`)}
+                              {...register(
+                                `sync_preferences.inventory.locations.${index}.bling_deposit_id`
+                              )}
                             />
                           </div>
 
@@ -830,7 +736,9 @@ const BlingSettingsPage = () => {
                               <Text className="text-xs text-ui-fg-subtle">Padrão</Text>
                               <Switch
                                 checked={isDefault}
-                                onCheckedChange={(checked) => handleSetDefaultLocation(index, checked)}
+                                onCheckedChange={(checked) =>
+                                  handleSetDefaultLocation(index, checked)
+                                }
                                 disabled={isSavingConfig}
                               />
                             </div>
@@ -844,7 +752,7 @@ const BlingSettingsPage = () => {
                             </Button>
                           </div>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 )}
@@ -855,14 +763,19 @@ const BlingSettingsPage = () => {
                   <div className="flex flex-col">
                     <Text className="font-semibold">Pedidos</Text>
                     <Text className="text-ui-fg-subtle">
-                      Envia pedidos confirmados para o Bling e recebe atualizações fiscais e de logística.
+                      Envia pedidos confirmados para o Bling e recebe atualizações fiscais e de
+                      logística.
                     </Text>
                   </div>
                   <Controller
                     name="sync_preferences.orders.enabled"
                     control={control}
                     render={({ field }) => (
-                      <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSavingConfig} />
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={isSavingConfig}
+                      />
                     )}
                   />
                 </div>
@@ -971,12 +884,23 @@ const BlingSettingsPage = () => {
             <div className="flex flex-col gap-y-3 rounded-lg border border-gray-200 p-4">
               <div className="flex flex-row flex-wrap items-center gap-4">
                 <StatBadge label="Itens" value={orderSyncResult.summary.total_items} />
-                <StatBadge label="Total" value={orderSyncResult.summary.total_amount} variant="info" />
-                <StatBadge label="Frete" value={orderSyncResult.summary.freight_amount} variant="info" />
+                <StatBadge
+                  label="Total"
+                  value={orderSyncResult.summary.total_amount}
+                  variant="info"
+                />
+                <StatBadge
+                  label="Frete"
+                  value={orderSyncResult.summary.freight_amount}
+                  variant="info"
+                />
               </div>
               <div className="text-sm text-ui-fg-subtle">
                 {orderSyncResult.summary.bling_sale_id ? (
-                  <>Venda registrada com ID <span className="font-semibold">{orderSyncResult.summary.bling_sale_id}</span>.</>
+                  <>
+                    Venda registrada com ID{" "}
+                    <span className="font-semibold">{orderSyncResult.summary.bling_sale_id}</span>.
+                  </>
                 ) : (
                   <>Venda sincronizada sem ID retornado. Verifique o Bling para confirmar.</>
                 )}
@@ -998,45 +922,40 @@ const BlingSettingsPage = () => {
         </div>
       </Container>
     </div>
-  )
-}
+  );
+};
 
-export default BlingSettingsPage
+export default BlingSettingsPage;
 
 type StatBadgeProps = {
-  label: string
-  value: number
-  variant?: "default" | "success" | "info" | "warning"
-}
+  label: string;
+  value: number;
+  variant?: "default" | "success" | "info" | "warning";
+};
 
-const STAT_BADGE_STYLES: Record<
-  NonNullable<StatBadgeProps["variant"]>,
-  string
-> = {
+const STAT_BADGE_STYLES: Record<NonNullable<StatBadgeProps["variant"]>, string> = {
   default: "border border-gray-200 bg-ui-bg-base text-ui-fg-base",
   success: "border border-green-200 bg-green-50 text-ui-tag-green-icon",
   info: "border border-blue-200 bg-blue-50 text-ui-tag-blue-icon",
   warning: "border border-amber-200 bg-amber-50 text-amber-900",
-}
+};
 
 const StatBadge = ({ label, value, variant = "default" }: StatBadgeProps) => {
   return (
-    <div
-      className={`flex items-center gap-x-2 rounded-md px-3 py-2 ${STAT_BADGE_STYLES[variant]}`}
-    >
+    <div className={`flex items-center gap-x-2 rounded-md px-3 py-2 ${STAT_BADGE_STYLES[variant]}`}>
       <Text className="text-xs uppercase tracking-wide">{label}</Text>
       <Text className="text-lg font-semibold">{value}</Text>
     </div>
-  )
-}
+  );
+};
 
 type PreferenceToggleProps = {
-  label: string
-  description: string
-  checked: boolean
-  onChange: (value: boolean) => void
-  disabled?: boolean
-}
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  disabled?: boolean;
+};
 
 const PreferenceToggle = ({
   label,
@@ -1053,5 +972,5 @@ const PreferenceToggle = ({
       </div>
       <Switch checked={checked} onCheckedChange={onChange} disabled={disabled} />
     </label>
-  )
-}
+  );
+};

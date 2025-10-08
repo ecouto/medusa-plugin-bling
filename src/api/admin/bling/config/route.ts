@@ -1,31 +1,24 @@
-import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/dist/http"
-import { z } from "zod"
-import BlingService, { type BlingSyncPreferencesInput } from "../../../../modules/bling.service"
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/dist/http";
+import { z } from "zod";
+import { BLING_MODULE } from "../../../../modules/bling";
+import type { BlingModuleService } from "../../../../modules/bling";
+import type { BlingSyncPreferencesInput } from "../../../../modules/bling/service";
 
-export async function GET(
-  req: MedusaRequest,
-  res: MedusaResponse
-): Promise<void> {
-  const blingService: BlingService = req.scope.resolve("blingService");
+export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void> {
+  const blingService = req.scope.resolve<BlingModuleService>(BLING_MODULE);
   const config = await blingService.getBlingConfig();
-  const syncPreferences = blingService.mergePreferences(
-    {},
-    config?.sync_preferences ?? undefined
-  );
+  const syncPreferences = blingService.mergePreferences({}, config?.syncPreferences ?? undefined);
 
   res.status(200).json({
-    client_id: config?.client_id ?? "",
-    client_secret: config?.client_secret ?? "",
-    webhook_secret: config?.webhook_secret ?? "",
-    is_connected: Boolean(config?.access_token),
+    client_id: config?.clientId ?? "",
+    client_secret: config?.clientSecret ?? "",
+    webhook_secret: config?.webhookSecret ?? "",
+    is_connected: Boolean(config?.accessToken),
     sync_preferences: syncPreferences,
   });
 }
 
-export async function POST(
-  req: MedusaRequest,
-  res: MedusaResponse
-): Promise<void> {
+export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<void> {
   const locationMappingSchema = z.object({
     stock_location_id: z.string().min(1, "Selecione um local do Medusa"),
     bling_deposit_id: z.string().min(1, "Informe o ID do depósito do Bling"),
@@ -80,38 +73,66 @@ export async function POST(
   }
 
   const { client_id, client_secret, webhook_secret, sync_preferences } = validation.data;
-  const blingService: BlingService = req.scope.resolve("blingService");
+  const blingService = req.scope.resolve<BlingModuleService>(BLING_MODULE);
   const syncPreferencesInput: BlingSyncPreferencesInput | undefined = sync_preferences
     ? {
-        products: sync_preferences.products
+        ...(sync_preferences.products
           ? {
-              enabled: sync_preferences.products.enabled,
-              import_images: sync_preferences.products.import_images,
-              import_descriptions: sync_preferences.products.import_descriptions,
-              import_prices: sync_preferences.products.import_prices,
+              products: {
+                ...(sync_preferences.products.enabled !== undefined && {
+                  enabled: sync_preferences.products.enabled,
+                }),
+                ...(sync_preferences.products.import_images !== undefined && {
+                  import_images: sync_preferences.products.import_images,
+                }),
+                ...(sync_preferences.products.import_descriptions !== undefined && {
+                  import_descriptions: sync_preferences.products.import_descriptions,
+                }),
+                ...(sync_preferences.products.import_prices !== undefined && {
+                  import_prices: sync_preferences.products.import_prices,
+                }),
+              },
             }
-          : undefined,
-        inventory: sync_preferences.inventory
+          : {}),
+        ...(sync_preferences.inventory
           ? {
-              enabled: sync_preferences.inventory.enabled,
-              bidirectional: sync_preferences.inventory.bidirectional,
-              locations: Array.isArray(sync_preferences.inventory.locations)
-                ? sync_preferences.inventory.locations.map((location) => ({
-                    stock_location_id: location.stock_location_id,
-                    bling_deposit_id: location.bling_deposit_id,
-                    is_default: location.is_default ?? false,
-                  }))
-                : undefined,
+              inventory: {
+                ...(sync_preferences.inventory.enabled !== undefined && {
+                  enabled: sync_preferences.inventory.enabled,
+                }),
+                ...(sync_preferences.inventory.bidirectional !== undefined && {
+                  bidirectional: sync_preferences.inventory.bidirectional,
+                }),
+                ...(Array.isArray(sync_preferences.inventory.locations)
+                  ? {
+                      locations: sync_preferences.inventory.locations.map((location) => ({
+                        stock_location_id: location.stock_location_id,
+                        bling_deposit_id: location.bling_deposit_id,
+                        is_default: location.is_default ?? false,
+                      })),
+                    }
+                  : {}),
+              },
             }
-          : undefined,
-        orders: sync_preferences.orders
+          : {}),
+        ...(sync_preferences.orders
           ? {
-              enabled: sync_preferences.orders.enabled,
-              send_to_bling: sync_preferences.orders.send_to_bling,
-              receive_from_bling: sync_preferences.orders.receive_from_bling,
-              generate_nf: sync_preferences.orders.generate_nf,
+              orders: {
+                ...(sync_preferences.orders.enabled !== undefined && {
+                  enabled: sync_preferences.orders.enabled,
+                }),
+                ...(sync_preferences.orders.send_to_bling !== undefined && {
+                  send_to_bling: sync_preferences.orders.send_to_bling,
+                }),
+                ...(sync_preferences.orders.receive_from_bling !== undefined && {
+                  receive_from_bling: sync_preferences.orders.receive_from_bling,
+                }),
+                ...(sync_preferences.orders.generate_nf !== undefined && {
+                  generate_nf: sync_preferences.orders.generate_nf,
+                }),
+              },
             }
-          : undefined,
+          : {}),
       }
     : undefined;
 
@@ -119,7 +140,7 @@ export async function POST(
     clientId: client_id ?? null,
     clientSecret: client_secret ?? null,
     webhookSecret: webhook_secret ?? null,
-    syncPreferences: syncPreferencesInput,
+    ...(syncPreferencesInput ? { syncPreferences: syncPreferencesInput } : {}),
   });
 
   res.status(200).json({ message: "Bling settings saved successfully." });

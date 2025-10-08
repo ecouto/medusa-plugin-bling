@@ -1,3 +1,21 @@
+# ===== CONFIGURAÇÕES GLOBAIS =====
+model = "gpt-5-codex"
+
+# Desabilitar aprovações (igual ao Claude Code)
+approval_policy = "never"
+
+# Modo workspace-write permite leitura, escrita e execução de comandos
+sandbox_mode = "danger-full-access"
+
+# ===== CONFIGURAÇÕES DO SANDBOX =====
+[sandbox_workspace_write]
+network_access = true  # Permite npm, git, pnpm, etc
+
+# ===== SERVIDORES MCP =====
 [mcp_servers.context7]
 command = "npx"
 args = ["-y", "@upstash/context7-mcp@latest"]
+
+# Variáveis de ambiente do MCP (se necessário)
+# [mcp_servers.context7.env]
+# MY_VAR = "value"

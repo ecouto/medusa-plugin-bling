@@ -1,11 +1,11 @@
-import type { JSX } from "react"
+import type { ComponentType } from "react";
+import type { WidgetConfig } from "@medusajs/admin-sdk";
 
-export type WidgetComponent = () => JSX.Element
+export type WidgetExtension = {
+  Component: ComponentType;
+  config: WidgetConfig;
+};
 
-export const widgets: WidgetComponent[] = []
+export const widgets: WidgetExtension[] = [];
 
-const widgetModule = {
-  widgets,
-}
-
-export default widgetModule
+export default widgets;

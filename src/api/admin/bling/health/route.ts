@@ -1,23 +1,24 @@
-import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/dist/http"
-import BlingService from "../../../../modules/bling.service"
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/dist/http";
+import { BLING_MODULE } from "../../../../modules/bling";
+import type { BlingModuleService } from "../../../../modules/bling";
 
 // Checks if a valid token exists in the database
-export async function GET(
-  req: MedusaRequest,
-  res: MedusaResponse
-): Promise<void> {
-  const blingService: BlingService = req.scope.resolve("blingService");
+export async function GET(req: MedusaRequest, res: MedusaResponse): Promise<void> {
+  const logger = req.scope.resolve("logger");
+  const blingService = req.scope.resolve<BlingModuleService>(BLING_MODULE);
+
   try {
     const config = await blingService.getBlingConfig();
-    if (config?.access_token) {
-      // Attempt to get access token to check if it's valid/refreshable
-      await blingService.getAccessToken(); 
-      res.status(200).json({ status: "ok" });
-    } else {
+    if (!config?.accessToken) {
       res.status(200).json({ status: "not_connected" });
+      return;
     }
+
+    await blingService.getAccessToken();
+    res.status(200).json({ status: "ok" });
   } catch (error: unknown) {
-    req.scope.resolve("logger").error("Bling health check failed:", (error as any).message);
-    res.status(200).json({ status: "error", message: (error as any).message });
+    const errorObject = error instanceof Error ? error : new Error(String(error));
+    logger.error("Bling health check failed:", errorObject);
+    res.status(200).json({ status: "error", message: errorObject.message });
   }
 }

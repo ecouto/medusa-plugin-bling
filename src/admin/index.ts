@@ -1,27 +1,30 @@
-import BlingSettingsPage, { config as blingSettingsConfig } from "./settings/bling-settings"
-import { widgets } from "./widgets"
+import BlingSettingsPage, { config as blingSettingsConfig } from "./settings/bling-settings";
+import BlingSettingsRoute, {
+  config as blingSettingsRouteConfig,
+} from "./routes/settings/bling/page";
+import widgetExtensions from "./widgets";
 
-export { widgets } from "./widgets"
+export const routes = [
+  {
+    Component: BlingSettingsRoute,
+    config: blingSettingsRouteConfig,
+  },
+];
 
-export const routes: never[] = []
 export const settings = [
   {
     Component: BlingSettingsPage,
-    config: { ...blingSettingsConfig },
+    config: blingSettingsConfig,
   },
-]
+];
+
+export const widgets = widgetExtensions;
 
 const entry = {
   identifier: "medusa-plugin-bling",
-  extensions: [
-    {
-      Component: BlingSettingsPage,
-      config: { ...blingSettingsConfig, type: "setting" as const },
-    },
-    ],
-    widgets,
-    routes,
-    settings,
-}
+  routes,
+  settings,
+  widgets,
+};
 
-export default entry
+export default entry;
