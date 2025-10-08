@@ -76,6 +76,10 @@ pnpm run format       # Verifica formatação com Prettier
 pnpm run format:fix   # Ajusta formatação com Prettier
 ```
 
+### Publicação automática
+
+O repositório usa `semantic-release`. Para gerar uma nova versão/tagueamento no GitHub/npm basta commitar na branch `main` com mensagens no padrão Conventional Commits (por exemplo `fix(admin): corrige widgets`). Commits `fix` disparam versões patch, `feat` versões minor e adicionando `!` o release se torna major automaticamente.
+
 ## Estrutura do projeto
 
 ```
