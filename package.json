@@ -2,26 +2,26 @@
   "name": "medusa-plugin-bling",
   "version": "3.0.5",
   "description": "Official MedusaJS v2.3+ plugin for Bling ERP integration - Complete Brazilian e-commerce solution with OAuth, Admin UI, Workflows, and Real-time Sync",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": ".medusa/server/src/index.js",
+  "types": ".medusa/server/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "types": "./.medusa/server/src/index.d.ts",
+      "import": "./.medusa/server/src/index.mjs",
+      "require": "./.medusa/server/src/index.js",
+      "default": "./.medusa/server/src/index.js"
     },
+    "./package.json": "./package.json",
     "./admin": {
-      "types": "./dist/admin/index.d.ts",
-      "import": "./dist/admin/index.js",
-      "require": "./dist/admin/index.js"
-    },
-    "./package.json": {
-      "default": "./package.json"
+      "import": "./.medusa/server/src/admin/index.mjs",
+      "require": "./.medusa/server/src/admin/index.js",
+      "default": "./.medusa/server/src/admin/index.js"
     }
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "build": "medusa plugin:build",
+    "dev": "medusa plugin:develop",
+    "clean": "rm -rf .medusa dist",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "lint:fix": "npm run lint -- --fix",
     "format": "prettier --check \"src/**/*.{ts,tsx,js,json}\"",
@@ -90,7 +90,8 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@medusajs/admin-sdk": "^2.3.0",
+    "@medusajs/admin-sdk": "2.10.4-preview-20251008120206",
+    "@medusajs/cli": "^2.10.3",
     "@medusajs/types": "^2.10.3",
     "@semantic-release/changelog": "^6.0.0",
     "@semantic-release/git": "^10.0.0",
@@ -116,11 +117,7 @@
     "typescript": "^5.5.4"
   },
   "files": [
-    "dist/**/*",
-    "README.md",
-    "package.json",
-    "LICENSE",
-    "CHANGELOG.md"
+    ".medusa/server"
   ],
   "repository": {
     "type": "git",
@@ -148,6 +145,9 @@
       ],
       "settings": [
         "admin/settings/**"
+      ],
+      "widgets": [
+        "admin/widgets/**"
       ]
     }
   },
