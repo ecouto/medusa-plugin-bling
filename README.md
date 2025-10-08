@@ -199,7 +199,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Built for the [MedusaJS](https://medusajs.com/) ecosystem
 - Powered by [Bling ERP API v3](https://developer.bling.com.br/)
-- Developed by [Casa Moratti](https://github.com/ecouto)
+- Developed by [Erick Couto](https://github.com/ecouto) for Casa Moratti
 
 ## 📞 Support
 

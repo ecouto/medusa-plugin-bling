@@ -52,7 +52,7 @@
     "workflows",
     "typescript"
   ],
-  "author": "Casa Moratti <contato@casamoratti.com>",
+  "author": "Erick Couto <ecouto@users.noreply.github.com>",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0",
