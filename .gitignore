@@ -14,13 +14,10 @@ yarn-error.log*
 .vscode/
 .idea/
 *.tsbuildinfo
+.cursor/
 
-# Development files (keep private)
-CLAUDE.md
-plano_plugin.ts
-.claudeignore
-.eslintrc.js
-.releaserc.json
-jest.config.js
-CONTRIBUTING.md
-/
+# Documentation
+*.md
+!README.md
+!LICENSE
+!CONTRIBUTING.md
