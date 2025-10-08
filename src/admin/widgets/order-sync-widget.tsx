@@ -11,9 +11,9 @@ type FeedbackState = {
 };
 
 type BlingOrderMetadata = {
-  sale_id?: string | null;
-  last_sync_at?: string;
-  warnings?: string[];
+  sale_id?: string | null | undefined;
+  last_sync_at?: string | undefined;
+  warnings?: string[] | undefined;
 };
 
 const getErrorMessage = (error: unknown): string => {

@@ -3,7 +3,7 @@ import type { WidgetConfig } from "@medusajs/admin-sdk";
 import OrderSyncWidget, { config as orderSyncWidgetConfig } from "./order-sync-widget";
 
 export type WidgetExtension = {
-  Component: ComponentType;
+  Component: ComponentType<any>;
   config: WidgetConfig;
 };
 

@@ -1,0 +1,79 @@
+# Source files (only publish built files)
+src/
+tsconfig.json
+
+# Development files
+*.log
+*.local
+.env*
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test files
+coverage/
+.nyc_output/
+*.lcov
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Build artifacts (keep only .medusa/server)
+dist/
+node_modules/
+.pnpm-store/
+
+# Documentation (keep only essential)
+docs/
+*.draft.md
+*.backup.*
+CONTRIBUTING.md
+CLAUDE.md
+plano_plugin.ts
+AGENTS.md
+
+# Git
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# CI/CD
+.gitlab-ci.yml
+.travis.yml
+circle.yml
+
+# Linting/Formatting
+.eslintrc*
+.prettierrc*
+.editorconfig
+
+# Lock files (users should generate their own)
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Keep these important files
+!README.md
+!LICENSE
+!CHANGELOG.md
+!package.json
+!.medusa/

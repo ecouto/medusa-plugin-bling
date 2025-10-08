@@ -22,9 +22,7 @@ export const menuItemModule = {
     {
       label: blingSettingsConfig.card.label,
       description: blingSettingsConfig.card.description,
-      icon: blingSettingsConfig.card.icon ?? blingSettingsRouteConfig.icon,
       path: settingsPath,
-      nested: blingSettingsRouteConfig.nested,
     },
   ],
 };
